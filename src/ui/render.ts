@@ -1,6 +1,7 @@
 // Arayüz: durumu gösterir, komut iletir. Kasa hesaplamaz, kazanma koşulu belirlemez.
 // Bütün metinler textContent ile yazılır — HTML olarak yorumlanmaz (Kullanilacak_Teknolojiler).
 import type { Command } from '../app/controller.ts';
+import { CARD_SET_VERSION } from '../content/cards.ts';
 import { buildReportCard } from '../core/calculate-awards.ts';
 import { RULES } from '../core/new-game.ts';
 import type { Card, DecisionRecord, GameState, Stats } from '../core/types.ts';
@@ -217,7 +218,7 @@ export function render(root: HTMLElement, s: GameState, cards: readonly Card[], 
     showStats ? statsBar(s) : '',
     h('main', { 'data-phase': s.phase }, main),
     showStats ? logEntries(s) : '',
-    h('footer', {}, 'BatışOS · eklenti sistemi yoktur ve olmayacaktır.'),
+    h('footer', {}, 'BatışOS · eklenti sistemi yoktur ve olmayacaktır. · ', h('span', { 'data-testid': 'surum' }, `v${__SURUM__} · ${CARD_SET_VERSION}`)),
   );
   // Yeni görünümde odak başlığa gider: klavye ve ekran okuyucu kullanıcısı nerede olduğunu bilir.
   root.querySelector<HTMLElement>('main h1')?.focus();

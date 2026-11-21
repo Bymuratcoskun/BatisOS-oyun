@@ -1,5 +1,7 @@
 // Tam oyun — tarayıcıda gerçek tıklama ve tuşla. "Oyuncu bunu yapabilir mi?" sorusunun kapısı.
 import { expect, test, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { CARD_SET_VERSION } from '../../src/content/cards.ts';
 import { EARLY_BUST, WIN } from '../helpers.ts';
 
 const kasa = (p: Page) => p.getByTestId('kasa');
@@ -103,4 +105,12 @@ test('müşteri hedefi kaçar → kaybedilir; “Yeniden dene” günlüğü tem
   await page.getByRole('button', { name: 'Yeniden dene' }).click();
   await expect(kasa(page)).toHaveText('100.000 TL');
   await expect(page.getByTestId('gunluk')).toHaveCount(0);
+});
+
+test('alt satırda sürüm ve kart seti görünür (package.json + CARD_SET_VERSION, elle yazılmaz)', async ({ page }) => {
+  const surum = (JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }).version;
+  await page.goto('./');
+  await expect(page.getByTestId('surum')).toHaveText(`v${surum} · ${CARD_SET_VERSION}`);
+  await page.getByRole('button', { name: 'Şirketi kur' }).click();
+  await expect(page.getByTestId('surum')).toHaveText(`v${surum} · ${CARD_SET_VERSION}`);
 });
