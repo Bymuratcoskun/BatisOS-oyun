@@ -42,7 +42,7 @@ test('dış bağlantı yok: tam oyunda bütün istekler 127.0.0.1', async ({ pag
   const hostlar = new Set<string>();
   page.on('request', (r) => hostlar.add(new URL(r.url()).host));
   const errors = hataTopla(page);
-  await page.goto('/');
+  await page.goto('./');
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   await oyna(page, WIN);
   await expect(page.getByTestId('bitis-baslik')).toHaveText('ŞİRKET AYAKTA');
@@ -59,7 +59,7 @@ test('dışarıya giden her istek kesilince oyun yine baştan sona oynanır', as
     return route.abort('internetdisconnected');
   });
   const errors = hataTopla(page);
-  await page.goto('/');
+  await page.goto('./');
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   await oyna(page, EARLY_BUST);
   await expect(page.getByTestId('bitis-baslik')).toHaveText('ŞİRKET KAPANDI');
@@ -69,7 +69,7 @@ test('dışarıya giden her istek kesilince oyun yine baştan sona oynanır', as
 
 test('art arda 5 oyun: her yeni oyun temiz başlar, hata birikmez', async ({ page }) => {
   const errors = hataTopla(page);
-  await page.goto('/');
+  await page.goto('./');
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   for (let i = 0; i < 5; i++) {
     await baslangicDegerleri(page);
@@ -86,7 +86,7 @@ test('art arda 5 oyun: her yeni oyun temiz başlar, hata birikmez', async ({ pag
 test('oyun ortasında pencere boyutu değişir (1920 → 360 → 1366): taşma yok, oyun sürer', async ({ page }) => {
   const tasma = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.goto('/');
+  await page.goto('./');
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   await oyna(page, WIN.slice(0, 3));
   for (const [w, h] of [[360, 640], [1366, 768]] as const) {

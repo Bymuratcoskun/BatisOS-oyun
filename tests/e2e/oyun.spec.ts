@@ -10,7 +10,7 @@ async function start(page: Page) {
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
   });
-  await page.goto('/');
+  await page.goto('./');
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   return errors;
 }

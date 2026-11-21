@@ -48,7 +48,7 @@ async function axeIhlalleri(page: Page): Promise<string[]> {
 
 /** Dört görünümün her birinde ölçüm fonksiyonunu çağırır. */
 async function herGorunumde(page: Page, olc: (gorunum: string) => Promise<void>) {
-  await page.goto('/');
+  await page.goto('./');
   await olc('başlangıç');
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   await olc('karar');
@@ -85,7 +85,7 @@ test('axe-core: dört görünümde WCAG A/AA ihlali yok', async ({ page }) => {
 
 test('uzun metin seçenekleri ve göstergeleri erişilemez yapmıyor (360x640)', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
-  await page.goto('/');
+  await page.goto('./');
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   const uzun = 'Ekip toplantısı uzadıkça uzadı ve gündem maddeleri çoğaldı. '.repeat(8);
   const bolunmez = 'Kendiyazdığımızdosyabiçimistandardıçekirdekmotoru'.repeat(2);
@@ -109,7 +109,7 @@ test('uzun metin seçenekleri ve göstergeleri erişilemez yapmıyor (360x640)',
 });
 
 test('odak görünür: Tab ile gelinen düğmenin çizgisi var', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('./');
   await page.keyboard.press('Tab');
   const focused = page.locator(':focus');
   await expect(focused).toHaveText('Şirketi kur');
@@ -122,7 +122,7 @@ test('odak görünür: Tab ile gelinen düğmenin çizgisi var', async ({ page }
 });
 
 test('değişimler yalnız renkle anlatılmıyor: işaret ve metin var', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('./');
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   await page.locator('.option[data-option="bicim"]').click(); // kasa −, müşteri 0, moral +
   const t = page.getByTestId('degisimler');
