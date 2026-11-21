@@ -4,6 +4,7 @@ import type { Command } from '../app/controller.ts';
 import { CARD_SET_VERSION } from '../content/cards.ts';
 import { buildReportCard } from '../core/calculate-awards.ts';
 import { RULES } from '../core/new-game.ts';
+import { optionOrder } from '../core/option-order.ts';
 import type { Card, DecisionRecord, GameState, Stats } from '../core/types.ts';
 
 type Child = Node | string | null | false;
@@ -28,6 +29,13 @@ const nf = new Intl.NumberFormat('tr-TR');
 
 export function money(n: number): string {
   return `${n < 0 ? MINUS : ''}${nf.format(Math.abs(n))} TL`;
+}
+/** Moral, kasa gibi gerçek eksi işaretiyle: −40 / 100 (K13). */
+export function moraleText(n: number): string {
+  return `${n < 0 ? MINUS : ''}${Math.abs(n)} / ${RULES.moraleMax}`;
+}
+function plain(n: number): string {
+  return `${n < 0 ? MINUS : ''}${nf.format(Math.abs(n))}`;
 }
 function signed(n: number, unit = ''): string {
   if (n === 0) return 'Değişmedi';
@@ -59,7 +67,7 @@ function statsBar(s: GameState): HTMLElement {
     { class: 'stats', 'aria-label': 'Göstergeler' },
     stat('Kasa', money(s.cash), 'kasa', s.cash < 20_000),
     stat('Ödeme yapan müşteri', `${s.customers} / ${RULES.customerTarget}`, 'musteri'),
-    stat('Kurucu morali', `${s.morale} / 100`, 'moral'),
+    stat('Kurucu morali', moraleText(s.morale), 'moral'),
   );
 }
 
@@ -106,7 +114,8 @@ function choosingView(s: GameState, cards: readonly Card[], dispatch: (c: Comman
     for (const b of buttons) b.disabled = true;
     dispatch({ type: 'choose', cardId: card.id, optionId });
   };
-  card.options.forEach((o, i) => {
+  // Ekran sırası tohumdan (v1.1); kimlikler ve kısayol tuşu ekrandaki konuma göre.
+  optionOrder(s.seed, s.turnIndex).map((k) => card.options[k]!).forEach((o, i) => {
     const b = h(
       'button',
       { class: 'option', 'data-option': o.id, 'aria-keyshortcuts': String(i + 1), onclick: () => choose(o.id) },
@@ -142,7 +151,7 @@ function resultView(s: GameState, dispatch: (c: Command) => void): HTMLElement {
         {},
         row('Kasa', money(d.before.cash), money(d.after.cash), change(d.delta.cash, ' TL')),
         row('Müşteri', String(d.before.customers), String(d.after.customers), change(d.delta.customers)),
-        row('Moral', String(d.before.morale), String(d.after.morale), change(d.delta.morale)),
+        row('Moral', plain(d.before.morale), plain(d.after.morale), change(d.delta.morale)),
       ),
     ),
     h('blockquote', { 'data-testid': 'sonuc-metni' }, d.log),
@@ -155,15 +164,56 @@ function resultView(s: GameState, dispatch: (c: Command) => void): HTMLElement {
   );
 }
 
+function endReasonText(s: GameState): string {
+  return s.endReason === 'goals_met'
+    ? 'Kasa pozitif, müşteri hedefi tuttu. Kimse buna hazırlıklı değildi.'
+    : s.endReason === 'cash_depleted'
+      ? `Şirketiniz ${s.decisionHistory.length}. haftada kapandı: kasa tükendi.`
+      : `12 hafta dayandınız ama yalnız ${s.customers} ödeme yapan müşteriniz var; hedef ${RULES.customerTarget}.`;
+}
+
+/**
+ * v1.1 paylaşılan sonuç metni. Sonuç ekranıyla aynı işlevlerden üretilir; ayrı hesap yapmaz.
+ * Kimlik, hesap, kişisel bilgi içermez.
+ */
+export function shareText(s: GameState): string {
+  const r = buildReportCard(s);
+  return [
+    `BatışOS v${__SURUM__} — ${s.outcome === 'won' ? 'ŞİRKET AYAKTA' : 'ŞİRKET KAPANDI'}`,
+    endReasonText(s),
+    `Kasa ${money(s.cash)} · Müşteri ${s.customers} / ${RULES.customerTarget} · Moral ${moraleText(s.morale)}`,
+    r.awards.length ? `Unvanlar: ${r.awards.map((a) => a.title).join('; ')}` : 'Unvan yok. Vasatlık da bir başarıdır.',
+    `Sen de batır: ${__OYUN_ADRESI__}`,
+  ].join('\n');
+}
+
+/** Panoya kopyala; olmazsa sessiz geçme: nedenini söyle, metni seçilebilir göster. */
+function copyBlock(text: string): HTMLElement {
+  const status = h('p', { class: 'muted', role: 'status', 'data-testid': 'kopya-durum' });
+  const wrap = h('div', { class: 'share' });
+  const fallback = () => {
+    status.textContent = 'Kopyalanamadı (tarayıcı izin vermedi). Metni aşağıdan seçip kopyalayabilirsiniz.';
+    if (wrap.querySelector('textarea') === null) {
+      const ta = h('textarea', { readonly: true, rows: '5', 'aria-label': 'Sonuç metni', 'data-testid': 'kopya-metni' }) as HTMLTextAreaElement;
+      ta.value = text;
+      wrap.append(ta);
+      ta.select();
+    }
+  };
+  const copy = () => {
+    if (!navigator.clipboard?.writeText) return fallback();
+    navigator.clipboard.writeText(text).then(() => {
+      status.textContent = 'Sonuç panoya kopyalandı.';
+    }, fallback);
+  };
+  wrap.prepend(h('button', { onclick: copy }, 'Sonucu kopyala'), status);
+  return wrap;
+}
+
 function finishedView(s: GameState, dispatch: (c: Command) => void): HTMLElement {
   const r = buildReportCard(s);
   const won = s.outcome === 'won';
-  const reason =
-    s.endReason === 'goals_met'
-      ? 'Kasa pozitif, müşteri hedefi tuttu. Kimse buna hazırlıklı değildi.'
-      : s.endReason === 'cash_depleted'
-        ? `Şirketiniz ${r.turnsSurvived}. haftada kapandı: kasa tükendi.`
-        : `12 hafta dayandınız ama yalnız ${s.customers} ödeme yapan müşteriniz var; hedef ${RULES.customerTarget}.`;
+  const reason = endReasonText(s);
   const dl = (k: string, v: string, id?: string) => [h('dt', {}, k), h('dd', id ? { 'data-testid': id } : {}, v)];
   return h(
     'section',
@@ -176,7 +226,7 @@ function finishedView(s: GameState, dispatch: (c: Command) => void): HTMLElement
       ...dl('Dayanılan süre', `${r.turnsSurvived} tur`),
       ...dl('Kalan kasa', money(s.cash), 'son-kasa'),
       ...dl('Ödeme yapan müşteri', String(s.customers), 'son-musteri'),
-      ...dl('Kurucu morali', `${s.morale} / 100`),
+      ...dl('Kurucu morali', moraleText(s.morale)),
       ...dl('Alınan altyapı kararı', String(r.infrastructureCount)),
       ...dl('Son harcama', r.lastSpend ?? 'Hiç harcama yapılmadı. Şüpheli.'),
     ),
@@ -185,8 +235,22 @@ function finishedView(s: GameState, dispatch: (c: Command) => void): HTMLElement
     r.awards.length
       ? h('ul', { class: 'awards', 'data-testid': 'unvanlar' }, ...r.awards.map((a) => h('li', {}, h('strong', {}, a.title), h('span', {}, a.quip))))
       : h('p', { class: 'muted', 'data-testid': 'unvanlar' }, 'Bu oyunda özel bir unvan kazanılmadı. Vasatlık da bir başarıdır; sadece ödülü yoktur.'),
-    h('h2', {}, 'KARAR ÖZETİ'),
-    h('ol', { class: 'summary' }, ...s.decisionHistory.map((d: DecisionRecord) => h('li', {}, d.optionText))),
+    h('h2', { id: 'karar-ozeti' }, 'KARAR ÖZETİ'),
+    // v1.1: harcama ve kalan kasa — oyuncu batışını adım adım görsün. Değerler yalnız karar geçmişinden.
+    h(
+      'table',
+      { class: 'summary', 'aria-labelledby': 'karar-ozeti', 'data-testid': 'karar-ozeti' },
+      h('thead', {}, h('tr', {}, ...['Hafta', 'Karar', 'Kasaya etkisi', 'Kalan kasa'].map((t) => h('th', { scope: 'col' }, t)))),
+      h(
+        'tbody',
+        {},
+        h('tr', {}, h('td', {}, '—'), h('td', {}, 'Başlangıç'), h('td', {}, ''), h('td', { class: 'num' }, money(RULES.startCash))),
+        ...s.decisionHistory.map((d: DecisionRecord) =>
+          h('tr', {}, h('td', {}, String(d.turn)), h('td', {}, d.optionText), h('td', { class: 'num' }, signed(d.delta.cash, ' TL')), h('td', { class: 'num' }, money(d.after.cash))),
+        ),
+      ),
+    ),
+    copyBlock(shareText(s)),
     h(
       'div',
       { class: 'restart' },

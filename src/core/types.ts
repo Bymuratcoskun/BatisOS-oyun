@@ -56,6 +56,8 @@ export interface GameState {
   endReason: EndReason | null;
   /** "Suçu teknoloji yığınına at" ile açılan oyunun ilk günlük notu. */
   openingNote: string | null;
+  /** v1.1: seçeneklerin ekran sırasının tohumu (Mimari_sema'da yok; K14). Kuralları etkilemez. */
+  seed: number;
 }
 
 /** Çekirdeğin her işlemi ya yeni durum ya da nedenli ret döndürür; sessiz geçiş yok. */

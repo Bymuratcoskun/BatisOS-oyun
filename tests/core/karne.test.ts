@@ -61,7 +61,7 @@ describe('Kurucu karnesi', () => {
   it('Önceki oyunun unvanları yeni oyuna taşınmaz', () => {
     const fin = play(CARDS, EARLY_BUST);
     expect(ids(fin).length).toBeGreaterThan(0);
-    expect(ids(must(restart(fin, true)))).toEqual([]);
+    expect(ids(must(restart(fin, true, 1)))).toEqual([]);
   });
 
   it('Batış raporu karar geçmişinden: dayanılan tur, altyapı sayısı, son harcama', () => {

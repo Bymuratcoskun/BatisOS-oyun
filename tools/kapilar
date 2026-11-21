@@ -66,7 +66,10 @@ kapi_oyun() {
   env -u DISPLAY -u WAYLAND_DISPLAY npx --no-install playwright test >"$log" 2>&1; rc=$?
   local gecen; gecen=$(grep -oE '^ +[0-9]+ passed' "$log" | grep -oE '[0-9]+' | tail -1)
   local kalan; kalan=$(grep -oE '^ +[0-9]+ (failed|flaky)' "$log" | grep -oE '[0-9]+' | paste -sd+ | bc 2>/dev/null)
-  echo "OYUN-KAPISI cikis=$rc gecen=${gecen:-?} basarisiz=${kalan:-0}"
+  # Atlanan test geçmiş sayılmaz; sayısı ve adı görünür olsun (CALISMA-KURALLARI §4 "atlanan test ✓ sayılırsa").
+  local atlanan; atlanan=$(grep -oE '^ +[0-9]+ skipped' "$log" | grep -oE '[0-9]+' | tail -1)
+  echo "OYUN-KAPISI cikis=$rc gecen=${gecen:-?} basarisiz=${kalan:-0} atlanan=${atlanan:-0}"
+  grep -E '^ +- +[0-9]+ ' "$log" | sed -E 's/^ +- +[0-9]+ /  atlandı: /'
   [ "$rc" -eq 0 ] && [ -n "$gecen" ] && [ -z "$kalan" ] || { grep -E '✘|Error|failed' "$log" | head -20; kirmizi oyun "çıkış=$rc, başarısız=${kalan:-?}"; return 1; }
 }
 

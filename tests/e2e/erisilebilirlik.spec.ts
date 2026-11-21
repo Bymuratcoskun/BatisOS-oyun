@@ -130,3 +130,53 @@ test('değişimler yalnız renkle anlatılmıyor: işaret ve metin var', async (
   await expect(t).toContainText('Değişmedi');
   await expect(t).toContainText('▲');
 });
+
+// v1.1 — %200 büyütme (WCAG 1.4.4). Ölçütler koşmadan önce yazıldı:
+// a) Sayfa yakınlaştırma %200: 1280×720 ekranda %200 = 640×360 CSS piksel. Dört görünümde taşma ölçümü
+//    temiz ve oyun sonuna kadar oynanıyor.
+// b) Yalnız metin büyütme %200 (kullanıcının varsayılan yazı boyutu 2 katı): önce metnin GERÇEKTEN
+//    büyüdüğü ölçülür (her ölçülen öğede oran ≥ 1,95; sabit px yazı büyümez ve testi boşuna yeşil yapardı),
+//    sonra 1280×720'de dört görünümde taşma temiz.
+test('sayfa yakınlaştırma %200 (1280×720 → 640×360): taşma yok, oyun oynanıyor', async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 360 });
+  const bulgular: string[] = [];
+  await herGorunumde(page, async (g) => {
+    for (const t of await tasmalar(page)) bulgular.push(`${g}: ${t}`);
+  });
+  expect(bulgular).toEqual([]);
+});
+
+test('yalnız metin büyütme %200: metin gerçekten büyüyor ve taşma yok', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const olcu = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        ['body', '.desc', '.option .opt-text', '.stat .value', 'h1', 'footer'].map((s) => {
+          const el = document.querySelector(s);
+          return [s, el ? parseFloat(getComputedStyle(el).fontSize) : -1];
+        }),
+      ),
+    );
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Şirketi kur' }).click();
+  const once = await olcu();
+  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+  const sonra = await olcu();
+  const oranlar = Object.fromEntries(Object.keys(once).map((k) => [k, +(sonra[k]! / once[k]!).toFixed(2)]));
+  expect(Object.values(once).every((v) => v > 0), `ölçülemeyen öğe: ${JSON.stringify(once)}`).toBe(true);
+  expect(Object.entries(oranlar).filter(([, r]) => r < 1.95), `büyümeyen yazı (oran): ${JSON.stringify(oranlar)}`).toEqual([]);
+
+  // Büyütülmüş metinle dört görünüm (stil sayfa yenilenince kaybolmasın diye her gezintide eklenir).
+  await page.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const s = document.createElement('style');
+      s.textContent = 'html { font-size: 200% !important; }';
+      document.head.append(s);
+    });
+  });
+  const bulgular: string[] = [];
+  await herGorunumde(page, async (g) => {
+    for (const t of await tasmalar(page)) bulgular.push(`${g}: ${t}`);
+  });
+  expect(bulgular).toEqual([]);
+});

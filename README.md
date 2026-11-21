@@ -244,7 +244,7 @@ Seçimi kilitle
     ↓
 Kararın etkilerini bir kez uygula
     ↓
-Müşteriyi en az 0, morali 0–100 aralığında tut
+Müşteriyi en az 0, morali en çok 100'de tut
     ↓
 Kararı ve sonucu faaliyet günlüğüne ekle
     ↓
@@ -347,7 +347,7 @@ Tamamlanma ölçütü: Demo, açıklama veya elle müdahale gerektirmeden tamaml
 | Aynı düğmeye tekrar basılır | İkinci bir etki oluşmaz |
 | Müşteri kaybı mevcut müşteriden fazladır | Müşteri sayısı 0’da kalır |
 | Moral 100’ü aşacak şekilde artar | Moral 100’de kalır |
-| Moral 0’ın altına inecek şekilde azalır | Moral 0’da kalır |
+| Moral 0’ın altına inecek şekilde azalır | Moral negatif görünür (kasa gibi); oyunu bitirmez *(v1.1'den beri; v1.0'da 0'da kalıyordu)* |
 | Kasa tam 0 TL olur | Oyun kaybedilir |
 | Son turda kasa pozitif ve müşteri 10’dur | Oyun kazanılır |
 | Son turda kasa pozitif ve müşteri 9’dur | Oyun kaybedilir |
@@ -414,7 +414,7 @@ Büyük altyapı değişiklikleri önermeden önce şu soruyu cevapla:
 | Başlangıç | Oyun açıklaması, başlangıç değerleri, kısa kurallar | Yeni oyun başlatma |
 | Karar | Göstergeler, olay kartı, üç seçenek, faaliyet günlüğü | Bir seçenek seçme |
 | Karar sonucu | Değişen değerler, sonuç metni | Sonraki tura geçme |
-| Oyun sonu | Kazanma veya kaybetme nedeni, karne, karar özeti | Yeniden başlatma |
+| Oyun sonu | Kazanma veya kaybetme nedeni, karne, karar özeti (v1.1: her kararın kasaya etkisi ve kalan kasa), sonucu kopyala | Yeniden başlatma |
 
 Seçim yapıldığı anda seçenekler kilitlenir. Sonuç metni oyuncu tarafından okunmadan yeni karta otomatik geçilmez.
 
@@ -486,7 +486,7 @@ Her kart, anlaşılır bir durum ile üç farklı tepki sunmalıdır.
 - Müşteri değişimleri tam sayıdır.
 - Moral değişimleri tam sayıdır.
 - Müşteri sayısı negatif olamaz.
-- Moral 0–100 aralığında kalır.
+- Moral en çok 100'dür; alt sınırı yoktur, sıfırın altına inebilir ve oyunu bitirmez.
 - Kasa negatif olabilir; bu durumda oyun hemen sona erer.
 - Bir seçeneğin etkileri tek işlem olarak uygulanır.
 
@@ -606,7 +606,7 @@ Unvanlar: Boş
 Ölçülen durum (`tests/e2e/erisilebilirlik.spec.ts`, Chromium + Firefox): yukarıdaki maddeler sınanıyor;
 axe-core WCAG 2.0/2.1 A ve AA taramasında ihlal 0; 360×640'tan 1920×1080'e beş ekran boyutunda taşma 0.
 
-Ekran okuyucuyla **denenmedi**; %200 yakınlaştırma **denenmedi**. Test edilmeden erişilebilirlik uyumluluğu iddia edilmez.
+%200 büyütme (v1.1) sınanıyor: sayfa yakınlaştırma (640×360) ve yalnız metin büyütme, ikisinde de taşma 0. Ekran okuyucuyla **denenmedi**. Test edilmeden erişilebilirlik uyumluluğu iddia edilmez.
 
 ## Hackathon demo senaryosu
 
@@ -671,10 +671,12 @@ Hayır. Hicvin hedefi belirli bir teknoloji değil, ihtiyacı değerlendirmeden 
 
 Bu kart setinde evet: her kartta en teknik (ve en pahalı) seçeneği seçen oyuncu 5. haftada batıyor.
 
-Bilinen sorun: en pahalı seçenek 12 kartın 12'sinde üçüncü sırada, ilk seçenek ise hiçbir kartta
-altyapı ya da tanıtım değil. Her kartta ilk seçeneği seçen oyuncu metni okumadan kazanıyor
-(74.700 TL, 21 müşteri). Kartların amacı tek bir düğmeyi her durumda doğru yapmak değildi; bu,
-sonraki sürümün ilk işlerinden biri.
+v1.0'da bilinen sorun: en pahalı seçenek 12 kartın 12'sinde üçüncü sıradaydı ve her kartta ilk
+seçeneği seçen oyuncu metni okumadan kazanıyordu (74.700 TL, 21 müşteri).
+
+v1.1'den beri seçeneklerin sırası her oyunda karışır (oyun başında seçilen tohumdan; oyun içinde yer
+değiştirmez). 1000 tohumda ölçüldü: "hep 1" %17,7, "hep 2" %15,8, "hep 3" %17,1 kazanıyor; rastgele
+oyun %16,85. Yani düğmenin yeri artık bilgi taşımıyor; metni okumak gerekiyor.
 
 ### Neden müşteriler otomatik gelir üretmiyor?
 
@@ -706,9 +708,10 @@ MIT. Ayrıntı: `LICENSE`. Kodu kullanabilir, değiştirebilir, dağıtabilirsin
 
 - Yalnız Fedora Linux 44'te, Chromium ve Firefox ile denendi. Safari/WebKit, Windows, macOS ve
   mobil tarayıcılar denenmedi.
-- Ekran okuyucu ve %200 yakınlaştırma denenmedi.
+- Ekran okuyucuyla denenmedi.
 - Denge bir kişinin dört oyunuyla doğrulandı; başka oyuncuların oyunu anlayıp anlamadığı bilinmiyor.
-- Seçenek sırası sabit: ilk seçeneği hep seçmek kazandırıyor (yukarıda "Bilinen sorun").
+- Seçenek sırasını karıştırmak, sayıları okuyan oyuncunun ikilemini çözmüyor: etkiler düğmede yazdığı
+  için müşteri getireni seçen yine rahat kazanıyor. Bu, olay zincirleri ve gerçek tercihler işi (sonraki sürümler).
 - Temiz bir makinede kurulum denenmedi.
 
 ***

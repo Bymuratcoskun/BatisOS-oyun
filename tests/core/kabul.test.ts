@@ -4,6 +4,7 @@ import { applyChoice, nextTurn, showResults } from '../../src/core/apply-choice.
 import { BLAME_NOTE, initialState, newGame, restart, RULES } from '../../src/core/new-game.ts';
 import type { GameState } from '../../src/core/types.ts';
 import { CARDS } from '../../src/content/cards.ts';
+import { moraleText } from '../../src/ui/render.ts';
 import { cardWith, EARLY_BUST, must, play, started, WIN } from '../helpers.ts';
 
 /** 12 kartlık sahte set: yalnız `last` kartının etkisi farklı. */
@@ -51,9 +52,18 @@ describe('Kabul ölçütleri (README)', () => {
     expect(must(applyChoice(atTurn(0, { morale: 90 }), deck, 'k', 'a')).morale).toBe(100);
   });
 
-  it('Moral 0’ın altına iner → 0’da kalır', () => {
-    const deck = [cardWith('k', { cash: 0, customers: 0, morale: -50 })];
-    expect(must(applyChoice(atTurn(0, { morale: 10 }), deck, 'k', 'a')).morale).toBe(0);
+  it('Moral 0’ın altına iner → negatif değer kalır, oyun sürer (K13: 10 − 50 → −40)', () => {
+    const deck = [cardWith('k', { cash: 0, customers: 0, morale: -50 }), cardWith('k2', { cash: 0, customers: 0, morale: 0 })];
+    const s = must(applyChoice(atTurn(0, { morale: 10 }), deck, 'k', 'a'));
+    expect(s.morale).toBe(-40);
+    expect(s.decisionHistory[0]?.delta.morale).toBe(-50);
+    expect(s.outcome).toBe('ongoing');
+  });
+
+  it('Negatif moral ekranda kasa gibi gerçek eksi işaretiyle yazılır (K13)', () => {
+    expect(moraleText(-40)).toBe('−40 / 100');
+    expect(moraleText(0)).toBe('0 / 100');
+    expect(moraleText(80)).toBe('80 / 100');
   });
 
   it('Kasa tam 0 TL olur → oyun kaybedilir', () => {
@@ -90,7 +100,7 @@ describe('Kabul ölçütleri (README)', () => {
   it('Yeniden başlatılır → önceki oyunun durumu temizlenir', () => {
     const fin = play(CARDS, EARLY_BUST);
     expect(fin.phase).toBe('finished');
-    const s = must(restart(fin, false));
+    const s = must(restart(fin, false, 1));
     expect(s).toMatchObject({ phase: 'choosing', turnIndex: 0, cash: 100_000, customers: 0, morale: 80, outcome: 'ongoing', endReason: null, openingNote: null });
     expect(s.decisionHistory).toEqual([]);
   });
@@ -126,7 +136,7 @@ describe('Test senaryoları (README)', () => {
 
   it('“Suçu teknoloji yığınına at” → aynı sıfırlama + “Sorumluluk devredildi”', () => {
     const fin = play(CARDS, EARLY_BUST);
-    const s = must(restart(fin, true));
+    const s = must(restart(fin, true, 1));
     expect(s).toMatchObject({ turnIndex: 0, cash: 100_000, customers: 0, morale: 80, openingNote: BLAME_NOTE });
     expect(s.decisionHistory).toEqual([]);
     expect(BLAME_NOTE).toBe('Sorumluluk devredildi.');
@@ -141,8 +151,8 @@ describe('Komutlar yanlış aşamada durumu değiştirmez (Mimari "Geçerli komu
   });
   it('Oyun sürerken yeni oyun / yeniden başlatma reddedilir', () => {
     const s = started();
-    expect(newGame(s).ok).toBe(false);
-    expect(restart(s, false).ok).toBe(false);
+    expect(newGame(s, 1).ok).toBe(false);
+    expect(restart(s, false, 1).ok).toBe(false);
   });
   it('Başka kartın seçeneği ve olmayan seçenek reddedilir', () => {
     const s = started();

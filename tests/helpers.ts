@@ -13,7 +13,7 @@ export function must(r: Result): GameState {
 }
 
 export function started(): GameState {
-  return must(newGame(initialState()));
+  return must(newGame(initialState(), 1)); // tohum yalnız ekran sırasını etkiler; testler kimlikle oynar
 }
 
 /** Bir seçim dizisini baştan oynar; oyun biterse durur ve sonuç ekranını açar. */

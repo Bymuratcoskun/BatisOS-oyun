@@ -1,5 +1,6 @@
 import { applyChoice, nextTurn, showResults } from '../core/apply-choice.ts';
 import { initialState, newGame, restart } from '../core/new-game.ts';
+import { newSeed } from '../core/option-order.ts';
 import type { Card, GameState, Result } from '../core/types.ts';
 
 /** Oyuncu komutları — Mimari_sema "Geçerli komutlar". */
@@ -21,7 +22,7 @@ export function createController(cards: readonly Card[], onChange: (s: GameState
   function run(cmd: Command): Result {
     switch (cmd.type) {
       case 'new-game':
-        return newGame(state);
+        return newGame(state, newSeed());
       case 'choose':
         return applyChoice(state, cards, cmd.cardId, cmd.optionId);
       case 'next-turn':
@@ -29,7 +30,7 @@ export function createController(cards: readonly Card[], onChange: (s: GameState
       case 'show-results':
         return showResults(state);
       case 'restart':
-        return restart(state, cmd.blameTech);
+        return restart(state, cmd.blameTech, newSeed());
     }
   }
 

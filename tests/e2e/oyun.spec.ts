@@ -70,6 +70,9 @@ test('kazanan dizi yalnız klavyeyle oynanır → İstemeden CEO', async ({ page
   }
   await expect(page.getByTestId('bitis-baslik')).toHaveText('ŞİRKET AYAKTA');
   await expect(page.getByTestId('son-kasa')).toHaveText('73.700 TL');
+  // Özetin son satırı "Kalan kasa" ile aynı; satır sayısı = başlangıç + 12 karar.
+  await expect(page.getByTestId('karar-ozeti').locator('tbody tr')).toHaveCount(13);
+  await expect(page.getByTestId('karar-ozeti').locator('tbody tr').last().locator('td').nth(3)).toHaveText('73.700 TL');
   await expect(page.getByTestId('son-musteri')).toHaveText('22');
   await expect(page.getByTestId('unvanlar')).toContainText('İstemeden CEO');
   // oyun bittikten sonra karar düğmesi yok
@@ -87,6 +90,12 @@ test('erken batış → 5. haftada kapanış, iki unvan, “Suçu teknoloji yı�
   await expect(unvan).toContainText('Mimar Sinan, Gelir Sıfır');
   await expect(unvan).toContainText('Açık Kaynak Fedaisi');
   await expect(page.getByText('“Keşke bir kere para almayı deneseydiniz.”')).toBeVisible();
+  // v1.1 karar özeti: harcama ve kalan kasa (yol haritası önerisi §5'teki beş haftalık örnek).
+  const ozet = page.getByTestId('karar-ozeti').locator('tbody tr');
+  await expect(ozet).toHaveCount(6);
+  await expect(ozet.locator('td:nth-child(4)')).toHaveText(['100.000 TL', '70.000 TL', '55.000 TL', '30.000 TL', '8.000 TL', '−10.000 TL']);
+  await expect(ozet.locator('td:nth-child(3)')).toHaveText(['', '−30.000 TL', '−15.000 TL', '−25.000 TL', '−22.000 TL', '−18.000 TL']);
+  await expect(ozet.locator('td:nth-child(1)')).toHaveText(['—', '1', '2', '3', '4', '5']);
 
   await page.getByRole('button', { name: 'Suçu teknoloji yığınına at' }).click();
   await expect(page.getByTestId('hafta')).toHaveText('Hafta 1 / 12');
@@ -113,4 +122,53 @@ test('alt satırda sürüm ve kart seti görünür (package.json + CARD_SET_VERS
   await expect(page.getByTestId('surum')).toHaveText(`v${surum} · ${CARD_SET_VERSION}`);
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   await expect(page.getByTestId('surum')).toHaveText(`v${surum} · ${CARD_SET_VERSION}`);
+});
+
+test('seçenek sırası oyundan oyuna değişir; tuş numarası ekrandaki yerle eşleşir (v1.1)', async ({ page }) => {
+  const sira = async () => {
+    const out: string[] = [];
+    for (const id of EARLY_BUST) {
+      const ids = await page.locator('.option').evaluateAll((bs) => bs.map((b) => (b as HTMLElement).dataset['option']));
+      const keys = await page.locator('.option').evaluateAll((bs) => bs.map((b) => [b.getAttribute('aria-keyshortcuts'), b.querySelector('.key')?.textContent]));
+      expect(keys).toEqual([['1', '1'], ['2', '2'], ['3', '3']]);
+      out.push(ids.join(','));
+      await page.locator(`.option[data-option="${id}"]`).click();
+      await page.getByRole('button', { name: /^(Sonraki tur|Sonuçları gör)$/ }).click();
+    }
+    return out;
+  };
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Şirketi kur' }).click();
+  const birinci = await sira();
+  await page.getByRole('button', { name: 'Yeniden dene' }).click();
+  const ikinci = await sira();
+  // 5 kartın hepsinde aynı sıra gelme olasılığı (1/6)^5 ≈ 0,013 %; ikisi de rastgele.
+  expect(birinci).not.toEqual(ikinci);
+});
+
+test('“Sonucu kopyala” panoya sonuç metnini yazar (v1.1)', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Playwright pano okuma iznini yalnız Chromium’da veriyor; yedek yol iki tarayıcıda ayrı test ediliyor');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await start(page);
+  await clickThrough(page, EARLY_BUST);
+  await page.getByRole('button', { name: 'Sonucu kopyala' }).click();
+  await expect(page.getByTestId('kopya-durum')).toHaveText('Sonuç panoya kopyalandı.');
+  const pano = await page.evaluate(() => navigator.clipboard.readText());
+  expect(pano.split('\n')[1]).toBe('Şirketiniz 5. haftada kapandı: kasa tükendi.');
+  expect(pano).toMatch(/^BatışOS v\S+ — ŞİRKET KAPANDI\n/);
+  expect(pano).toContain('Kasa −10.000 TL');
+  expect(pano).toMatch(/Sen de batır: https:\/\/\S+\/$/);
+});
+
+test('kopyalama reddedilirse sessiz geçmez: nedeni söyler, metni seçilebilir gösterir (v1.1)', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('izin yok')) }, configurable: true });
+  });
+  await start(page);
+  await clickThrough(page, EARLY_BUST);
+  await page.getByRole('button', { name: 'Sonucu kopyala' }).click();
+  await expect(page.getByTestId('kopya-durum')).toContainText('Kopyalanamadı');
+  await expect(page.getByTestId('kopya-metni')).toHaveValue(/Şirketiniz 5\. haftada kapandı: kasa tükendi\./);
+  await page.getByRole('button', { name: 'Sonucu kopyala' }).click(); // ikinci basış ikinci kutu açmaz
+  await expect(page.getByTestId('kopya-metni')).toHaveCount(1);
 });

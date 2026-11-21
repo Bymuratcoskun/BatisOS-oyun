@@ -18,7 +18,9 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 17px/1.5 var(--sans);
+  /* 1.0625rem = varsayılanda 17px; px değil, kullanıcı yazıyı büyütünce büyüsün (WCAG 1.4.4, v1.1).
+     17px iken metin büyütmede gövde ve seçenek metinleri hiç büyümüyordu (oran 1,00). */
+  font: 1.0625rem/1.5 var(--sans);
   /* Bölünmez uzun sözcük dar ekranda yatay taşma yapmasın (Aşama 6, erisilebilirlik.spec.ts). */
   overflow-wrap: anywhere;
 }
@@ -91,7 +93,13 @@ blockquote {
 .awards { list-style: none; padding: 0; }
 .awards li { border: 1px solid var(--accent); border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; }
 .awards strong { display: block; color: var(--accent); }
-.summary { color: var(--muted); }
+.summary { color: var(--muted); width: 100%; border-collapse: collapse; }
+.summary th { text-align: left; font-weight: 400; font-size: 0.8rem; padding: 4px 8px 4px 0; border-bottom: 1px solid var(--muted); }
+.summary td { padding: 4px 8px 4px 0; vertical-align: top; }
+.summary .num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+.summary th:nth-child(n+3) { text-align: right; }
+.share { margin-top: 16px; }
+.share textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; font-family: var(--mono); font-size: 0.85rem; background: transparent; color: inherit; border: 1px solid var(--muted); border-radius: 6px; padding: 8px; }
 .restart { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .rules li { margin-bottom: 4px; }
 .error h1 { color: var(--down); }

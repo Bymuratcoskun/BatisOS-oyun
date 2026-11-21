@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyChoice, nextTurn } from '../../src/core/apply-choice.ts';
 import { calculateAwards } from '../../src/core/calculate-awards.ts';
+import { optionOrder } from '../../src/core/option-order.ts';
 import type { GameState } from '../../src/core/types.ts';
 import { CARDS, CARD_SET_VERSION } from '../../src/content/cards.ts';
 import { must, play, started } from '../helpers.ts';
@@ -66,6 +67,31 @@ describe(`Denge (${CARD_SET_VERSION})`, () => {
 
   it('dört unvanın dördü de en az bir dizide çıkıyor', () => {
     expect(Object.keys(t.awards).sort()).toEqual(['Açık Kaynak Fedaisi', 'Mimar Sinan, Gelir Sıfır', 'Sunum Unicorn’u', 'İstemeden CEO'].sort());
+  });
+
+  // Strateji kapısı (v1.1, K14). Ölçüt koşmadan önce yazıldı:
+  // Sıra rastgeleyse "hep k. düğme" her kartta rastgele bir seçenek seçmekle aynıdır; yani kazanma oranı
+  // rastgele oyunun oranına (t.won / t.total) eşit OLMALI — düğmenin yeri bilgi taşımamalı.
+  // 1000 sabit tohum (0..999): binom SD = √(p(1−p)/1000) ≈ 1,2 puan; eşik 4 SD.
+  // v1.0'da (sabit sıra) "hep 1" %100 kazanıyordu; kapı bunu kırmızı verir.
+  it('strateji kapısı: hiçbir düğme konumu rastgele oyundan anlamlı ölçüde iyi ya da kötü değil', () => {
+    const p = t.won / t.total;
+    const sd = Math.sqrt((p * (1 - p)) / 1000);
+    const oranlar = [0, 1, 2].map((k) => {
+      let kazanan = 0;
+      for (let seed = 0; seed < 1000; seed++) {
+        const seq = CARDS.map((c, i) => c.options[optionOrder(seed, i)[k]!]!.id);
+        if (play(CARDS, seq).outcome === 'won') kazanan++;
+      }
+      return kazanan / 1000;
+    });
+    const sabit = [0, 1, 2].map((k) => play(CARDS, CARDS.map((c) => c.options[k]!.id)).outcome);
+    console.log(
+      `DENGE strateji tohum=1000 rastgele=${(100 * p).toFixed(2)}% esik=±${(400 * sd).toFixed(1)}puan ` +
+        oranlar.map((o, k) => `hep-${k + 1}=${(100 * o).toFixed(1)}%`).join(' ') +
+        ` | sabit_sira(v1.0): ${sabit.map((o, k) => `hep-${k + 1}=${o}`).join(' ')}`,
+    );
+    for (const o of oranlar) expect(Math.abs(o - p)).toBeLessThan(4 * sd);
   });
 
   it('senaryo sonuçları (rapor)', () => {

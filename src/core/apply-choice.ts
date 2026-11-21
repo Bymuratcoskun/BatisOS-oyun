@@ -2,9 +2,6 @@ import { evaluateOutcome } from './evaluate-outcome.ts';
 import { RULES } from './new-game.ts';
 import type { Card, DecisionRecord, GameState, Result, Stats } from './types.ts';
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
 
 /**
  * "Seçenek seç" — Mimari_sema "Bir kararın işlenmesi".
@@ -37,7 +34,7 @@ export function applyChoice(
   const after: Stats = {
     cash: before.cash + option.effects.cash, // kasa negatif olabilir; oyun hemen biter
     customers: Math.max(0, before.customers + option.effects.customers),
-    morale: clamp(before.morale + option.effects.morale, RULES.moraleMin, RULES.moraleMax),
+    morale: Math.min(RULES.moraleMax, before.morale + option.effects.morale), // alt sınır yok, oyunu bitirmez (K13)
   };
   const delta: Stats = {
     cash: after.cash - before.cash,

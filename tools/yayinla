@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# BatışOS yayını — tek komut. Kullanım: tools/yayinla <açık-depo-dizini>
+# Uzun iş: systemd altında koştur (oturum kapanınca ölmesin):
+#   systemd-run --user --unit=batisos-yayin --working-directory="$PWD" bash -c 'tools/yayinla ../BatisOS-oyun > yayin.log 2>&1'
+#
+# Her adım kendi denetiminden geçmezse durur ve NEDENİNİ yazar (sessiz geçiş yok).
+# Son satır: YAYIN-SONUC surum=… canli_sha=AYNI canli_test=gecen/… — yalnız hepsi tuttuysa yazılır.
+set -euo pipefail
+export LC_ALL=C.UTF-8
+cd "$(dirname "$0")/.."
+KAYNAK="$PWD"
+dur() { echo "YAYIN-DURDU · $1" >&2; exit 1; }
+adim() { echo "── $1"; }
+
+H="${1:?açık depo dizini ver (ör. ../BatisOS-oyun)}"
+H="$(cd "$H" && pwd)" || dur "açık depo dizini yok: $1"
+[ -d "$H/.git" ] || dur "$H bir git deposu değil"
+
+adim "1. ön koşullar"
+SURUM=$(node -p "require('./package.json').version")
+ADRES=$(node -p "require('./package.json').homepage")
+case "$SURUM" in *-*) dur "sürüm $SURUM bir geliştirme sürümü; yayından önce package.json'da kesin sürüm (ör. 1.1.0)";; esac
+[ -z "$(git status --porcelain)" ] || dur "kaynak depoda kaydedilmemiş değişiklik var"
+git fetch -q origin
+[ "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')" ] || dur "kaynak depo uzak depoyla aynı değil (önce push)"
+git rev-parse -q --verify "refs/tags/v$SURUM" >/dev/null || dur "kaynak depoda v$SURUM etiketi yok"
+[ "$(git rev-list -n1 "v$SURUM")" = "$(git rev-parse HEAD)" ] || dur "v$SURUM etiketi HEAD'de değil"
+KAYNAK_COMMIT=$(git rev-parse --short HEAD)
+echo "surum=$SURUM kaynak=$KAYNAK_COMMIT adres=$ADRES"
+
+adim "2. açık depoya eşitle, sıfırdan kur, kapılar"
+tools/acik-depo-esitle "$H"
+cd "$H"
+git rev-parse -q --verify "refs/tags/v$SURUM" >/dev/null && dur "açık depoda v$SURUM etiketi zaten var"
+npm ci --no-audit --no-fund >/dev/null
+KL=$(mktemp)
+tools/kapilar >"$KL" 2>&1 || true   # sonuç aşağıda satırdan okunur; boru yok (grep -q erken çıkıp boruyu koparmasın)
+grep -E 'KAPI|KIRMIZI|atlandı' "$KL"
+grep -qE '^KAPILAR yesil=[0-9]+ kirmizi=0 ' "$KL" || dur "açık depoda kapılar yeşil değil (günlük: $KL)"
+
+adim "3. açık depo: commit, etiket, gönder"
+MSG=$(mktemp)
+printf 'v%s (kaynak %s)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n' "$SURUM" "$KAYNAK_COMMIT" >"$MSG"
+git add -A
+if git diff --cached --quiet; then echo "değişiklik yok (yalnız etiket)"; else git commit -q -F "$MSG"; fi
+git tag -a "v$SURUM" -m "BatisOS v$SURUM"
+git push -q origin main "v$SURUM"
+ACIK_COMMIT=$(git rev-parse --short HEAD)
+
+adim "4. derle, gh-pages"
+npm run build >/dev/null
+P=$(mktemp -d)
+git clone -q -b gh-pages "$(git remote get-url origin)" "$P"
+( cd "$P" && git rm -rq --ignore-unmatch . )
+cp -r dist/. "$P/" && touch "$P/.nojekyll"
+( cd "$P" && sha256sum index.html assets/* ) >"$P.sha"
+cd "$P"
+git config user.email "$(git -C "$H" config user.email)"
+git config user.name "$(git -C "$H" config user.name)"
+printf 'Yayin: v%s (acik %s)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n' "$SURUM" "$ACIK_COMMIT" >"$MSG"
+git add -A && git commit -q -F "$MSG" && git push -q
+PAGES_COMMIT=$(git rev-parse --short HEAD)
+REPO=$(git remote get-url origin | sed -E 's#.*github.com[:/]##; s#\.git$##')
+
+adim "5. GitHub yayını bekle, canlı dosyaları karşılaştır"
+durum=""
+for _ in $(seq 1 60); do
+  durum=$(gh api "repos/$REPO/pages/builds/latest" -q '.status+" "+.commit[0:7]' 2>/dev/null || true)
+  case "$durum" in "built $PAGES_COMMIT") break ;; errored*) dur "GitHub Pages derlemesi hata verdi: $durum" ;; esac
+  sleep 10
+done
+[ "$durum" = "built $PAGES_COMMIT" ] || dur "GitHub Pages 10 dakikada bitmedi (son durum: $durum)"
+C=$(mktemp -d)
+while read -r _ f; do
+  mkdir -p "$C/$(dirname "$f")"
+  kod=$(curl -s -H 'Cache-Control: no-cache' -o "$C/$f" -w '%{http_code}' "$ADRES$f?t=$RANDOM")
+  [ "$kod" = 200 ] || dur "canlı dosya alınamadı: $f (HTTP $kod)"
+done <"$P.sha"
+( cd "$C" && sha256sum -c --quiet "$P.sha" ) || dur "canlı dosyalar yerel paketle aynı değil (önbellek olabilir; birkaç dakika sonra yeniden dene)"
+echo "canli_sha=AYNI"
+
+adim "6. canlı adrese karşı tarayıcı testleri"
+cd "$H"
+CFG="$H/zz-canli.config.ts"
+trap 'rm -f "$CFG"' EXIT
+cat >"$CFG" <<EOF
+import { defineConfig, devices } from '@playwright/test';
+// Geçici: yayindaki adrese karşı. kararlilik.spec yerel pakete özgü (127.0.0.1) olduğu için hariç.
+export default defineConfig({
+  testDir: 'tests/e2e', testIgnore: ['kararlilik.spec.ts'], retries: 0, workers: 1,
+  use: { baseURL: '$ADRES', headless: true },
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }, { name: 'firefox', use: { ...devices['Desktop Firefox'] } }],
+});
+EOF
+TL=$(mktemp)
+env -u DISPLAY -u WAYLAND_DISPLAY npx --no-install playwright test -c "$CFG" --reporter=line >"$TL" 2>&1 || { tail -30 "$TL"; dur "canlı testler kırmızı"; }
+gecen=$(grep -oE '^ +[0-9]+ passed' "$TL" | grep -oE '[0-9]+' | tail -1)
+atlanan=$(grep -oE '^ +[0-9]+ skipped' "$TL" | grep -oE '[0-9]+' | tail -1)
+[ -n "$gecen" ] || dur "canlı test özeti okunamadı"
+rm -rf test-results
+echo "YAYIN-SONUC surum=$SURUM kaynak=$KAYNAK_COMMIT acik=$ACIK_COMMIT pages=$PAGES_COMMIT canli_sha=AYNI canli_test=gecen:$gecen,atlanan:${atlanan:-0} adres=$ADRES"
