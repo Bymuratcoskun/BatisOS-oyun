@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { buildReportCard, calculateAwards } from '../../src/core/calculate-awards.ts';
 import { restart } from '../../src/core/new-game.ts';
 import { CARDS } from '../../src/content/cards.ts';
-import { EARLY_BUST, must, play, WIN } from '../helpers.ts';
+import { EARLY_BUST, must, play, WIN, KLASIK_IDS } from '../helpers.ts';
 
 const ids = (s: Parameters<typeof calculateAwards>[0]) => calculateAwards(s).map((a) => a.id);
 
@@ -61,7 +61,7 @@ describe('Kurucu karnesi', () => {
   it('Önceki oyunun unvanları yeni oyuna taşınmaz', () => {
     const fin = play(CARDS, EARLY_BUST);
     expect(ids(fin).length).toBeGreaterThan(0);
-    expect(ids(must(restart(fin, true, 1)))).toEqual([]);
+    expect(ids(must(restart(fin, true, 1, KLASIK_IDS)))).toEqual([]);
   });
 
   it('Batış raporu karar geçmişinden: dayanılan tur, altyapı sayısı, son harcama', () => {

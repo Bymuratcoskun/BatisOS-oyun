@@ -1,5 +1,6 @@
+import { buildDeck } from '../core/deck.ts';
 import { RULES } from '../core/new-game.ts';
-import { TAGS, type Card } from '../core/types.ts';
+import { STAGES, TAGS, type Card, type PoolCard } from '../core/types.ts';
 
 /**
  * İçerik doğrulama — README "İçerik doğrulama" listesi.
@@ -7,12 +8,50 @@ import { TAGS, type Card } from '../core/types.ts';
  * Girdi `unknown` alınır; tür sistemi kandırılsa bile çalışma anında denetlenir.
  */
 export function validateCards(input: unknown): string[] {
-  const errors: string[] = [];
   if (!Array.isArray(input)) return ['Kart seti bir dizi değil'];
+  const errors: string[] = [];
   if (input.length !== RULES.turns) {
     errors.push(`Kart sayısı ${input.length}; tam olarak ${RULES.turns} olmalı`);
   }
+  checkCards(input, errors);
+  return errors;
+}
 
+/**
+ * v1.2 havuz doğrulaması: her kart `validateCards`'ın kart kurallarından geçer; ayrıca evre geçerli,
+ * deste biçimi `turns`'e eşit, her evrede yeterli kart var ve 100 tohumda gerçekten deste kuruluyor.
+ */
+export function validatePool(input: unknown): string[] {
+  if (!Array.isArray(input)) return ['Kart havuzu bir dizi değil'];
+  const errors: string[] = [];
+  checkCards(input, errors);
+  const shape = RULES.deckShape;
+  const toplam = STAGES.reduce((a, e) => a + shape[e], 0);
+  if (toplam !== RULES.turns) errors.push(`Deste biçimi ${toplam} kart; tur sayısı ${RULES.turns}`);
+  input.forEach((raw: unknown, i: number) => {
+    const c = raw as Partial<PoolCard> | null;
+    const where = `havuz[${i + 1}]${typeof c?.id === 'string' ? ` "${c.id}"` : ''}`;
+    if (c === null || typeof c !== 'object') return; // checkCards zaten yazdı
+    if (!(STAGES as readonly unknown[]).includes(c.stage)) errors.push(`${where}: evre tanımsız (${String(c.stage)}; tanımlılar: ${STAGES.join(', ')})`);
+    if (c.family !== undefined && !nonEmpty(c.family)) errors.push(`${where}: aile boş`);
+  });
+  for (const e of STAGES) {
+    const n = input.filter((c: Partial<PoolCard> | null) => c?.stage === e).length;
+    if (n < shape[e]) errors.push(`"${e}" evresinde ${n} kart var; deste ${shape[e]} istiyor`);
+  }
+  if (errors.length === 0) {
+    for (let seed = 0; seed < 100; seed++) {
+      const r = buildDeck(input as PoolCard[], seed);
+      if (!r.ok) {
+        errors.push(r.reason);
+        break;
+      }
+    }
+  }
+  return errors;
+}
+
+function checkCards(input: readonly unknown[], errors: string[]): void {
   const seenCardIds = new Set<string>();
   input.forEach((raw: unknown, i: number) => {
     const card = raw as Partial<Card> | null;
@@ -70,7 +109,6 @@ export function validateCards(input: unknown): string[] {
       }
     });
   });
-  return errors;
 }
 
 function nonEmpty(v: unknown): v is string {

@@ -53,7 +53,7 @@ kapi_birim() {
   local satir; satir=$(grep -E '^ +Tests +' "$log" | tail -1)
   local gecen; gecen=$(echo "$satir" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
   local kalan; kalan=$(echo "$satir" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+')
-  grep -E '^DENGE ' "$log" | sed 's/^/  /'
+  grep -E '^(DENGE|MARKA-ISTISNA) ' "$log" | sed 's/^/  /'
   echo "BIRIM-KAPISI cikis=$rc gecen=${gecen:-?} basarisiz=${kalan:-0}"
   [ -n "$satir" ] || { tail -20 "$log"; kirmizi birim "vitest özet satırı yok (araç çalışmadı)"; return 1; }
   grep -q '^DENGE kart-seti' "$log" || { kirmizi birim "denge raporu üretilmedi"; return 1; }

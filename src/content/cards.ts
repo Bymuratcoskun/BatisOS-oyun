@@ -5,14 +5,14 @@ import type { Card } from '../core/types.ts';
  *
  * Kart 1–3: metinler ve sayılar docs/kaynak/ReadMe.md "Örnek kararlar" tablolarından BİREBİR.
  * Kart 4–12: Claude Code taslağı (öneri) — README ekran taslağındaki öneriler
- * ("eklenti mimarisi", "logoya animasyon", "Discord kuruldu", "ödeme ekranını yeniden yazmak")
+ * ("eklenti mimarisi", "logoya animasyon", "Discord kuruldu" — BatisOS_Projesi.md:89 alıntısı; kartta marka adı yerine "topluluk sunucusu" (K17), "ödeme ekranını yeniden yazmak")
  * temel alındı. Sayılar oyun ayarıdır, piyasa verisi değildir; denge tests/content/denge.test.ts
  * ile 3^12 dizinin tamamı üzerinden ölçülür.
  *
  * Yazım kuralı (README "Kart yazım kuralları"): günlük metni sayılarla çelişmez.
  * Müşteri kaybettiren seçeneklerde metin kesin sayı söylemez, çünkü müşteri 0'da kırpılabilir.
  */
-export const CARD_SET_VERSION = 'kart-seti-1.1'; // 1.1: yalnız kart 1 "bicim" metni (K11, Ö1-A); sayılar aynı
+export const CARD_SET_VERSION = 'kart-seti-1.2'; // 1.2: marka adları kalktı — kart 1 "csv" (Excel), kart 6 "discord" (K16, K17). 1.1: kart 1 "bicim" metni (K11). Sayılar aynı
 
 export const CARDS: readonly Card[] = [
   {
@@ -25,7 +25,7 @@ export const CARDS: readonly Card[] = [
         text: 'Sadece istenen CSV özelliğini yap',
         effects: { cash: -5_000, customers: 3, morale: 0 },
         tags: [],
-        log: 'CSV yapıldı. Müşteri Excel’de açtı, ödedi, iki arkadaşını da getirdi. Ekip biraz hayal kırıklığında: bu kadar kolay olmamalıydı.',
+        log: 'CSV yapıldı. Müşteri tablo programında açtı, ödedi, iki arkadaşını da getirdi. Ekip biraz hayal kırıklığında: bu kadar kolay olmamalıydı.',
       },
       {
         id: 'motor',
@@ -169,10 +169,10 @@ export const CARDS: readonly Card[] = [
       },
       {
         id: 'discord',
-        text: 'Discord sunucusu kur',
+        text: 'Topluluk sunucusu kur',
         effects: { cash: -2_000, customers: 0, morale: 5 },
         tags: ['tanıtım'],
-        log: 'Discord kuruldu: 14 kanal, 6 rol, 1 bot, 1 üye. Üye de bot. Şifre hâlâ unutulmuş durumda.',
+        log: 'Topluluk sunucusu kuruldu: 14 kanal, 6 rol, 1 bot, 1 üye. Üye de bot. Şifre hâlâ unutulmuş durumda.',
       },
       {
         id: 'kimlik',

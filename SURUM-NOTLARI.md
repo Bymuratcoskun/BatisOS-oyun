@@ -1,5 +1,24 @@
 # Sürüm notları
 
+## v1.2.0
+
+**Eklenen**
+- Kart havuzu: 27 kart. Her oyunda bundan 12 kartlık bir deste kurulur (4 başlangıç, 7 gelişme, 1 final); benzer kartlar aynı destede çıkmaz. Eski 12 kart eski sırasıyla: adresin sonuna `#klasik`.
+- 15 yeni kart; üçünde müşteri kazanmanın moral bedeli var, moral ilk kez sıfırın altına inebiliyor.
+- Sınırda kesilen etki nedeniyle gösterilir: "▲ +5 (sınır 100)". Kopyalanan sonuçta altyapı kararı sayısı var.
+- Bağlantıyla aynı deste: kopyalanan sonucun bağlantısı (`#tohum-…`) arkadaşına aynı 12 kartı ve aynı seçenek sırasını açar.
+- Bu tarayıcıda oynanan oyun sayısı, kazanma sayısı ve en iyi kasa (yalnız bu cihazda; hesap yok).
+
+**Değişen**
+- Kart seti `kart-seti-1.2`: kartlardaki gerçek marka adları (tablo programı, topluluk sunucusu) kaldırıldı. Marka adı
+  artık bir testle denetleniyor.
+- "Tur" yerine her yerde "hafta" ("Sonraki hafta"). Kazanılan oyunda "Son harcama" yerine "Son imza".
+
+**Bilinen sorunlar**
+- Havuz oyunu kolaylaştırıyor: rastgele oyunun kazanma oranı klasik destede %16,85, havuzda (100 deste) ortanca %31,32. Oyuncuların gerçek oyunlarıyla ayarlanacak.
+- Etkiler düğmelerde yazdığı için sayıları okuyan oyuncu müşteri getireni seçip rahat kazanır.
+- Ekran okuyucuyla denenmedi. Yalnız Fedora Linux'ta, Chromium ve Firefox ile denendi.
+
 ## v1.1.0
 
 **Eklenen**

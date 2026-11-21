@@ -197,7 +197,7 @@ Hackathon sürümünün hedefi, baştan sona oynanabilen tek bir oyun döngüsü
 - [x] Yeniden başlatma.
 - [ ] Baştan sona denenmiş bir demo akışı. *(Akış otomatik testte her koşuda oynanıyor; sesli sunum provası henüz yapılmadı.)*
 
-İlk sürümde kartlar sabit sırayla gösterilir. Rastgele kart seçimi hedeflenmez.
+İlk sürümde (v1.0–v1.1) kartlar sabit sırayla gösterilir. v1.2'den beri her oyunda 27 kartlık bir havuzdan 12 kartlık bir deste kurulur: 4 başlangıç, 7 gelişme, 1 final; benzer kartlar aynı destede çıkmaz. Eski 12 kart eski sırasıyla için adresin sonuna `#klasik`, aynı deste için `#tohum-…` (kopyalanan sonucun bağlantısı bunu taşır).
 
 ## Kapsam dışı
 
@@ -413,7 +413,7 @@ Büyük altyapı değişiklikleri önermeden önce şu soruyu cevapla:
 |---|---|---|
 | Başlangıç | Oyun açıklaması, başlangıç değerleri, kısa kurallar | Yeni oyun başlatma |
 | Karar | Göstergeler, olay kartı, üç seçenek, faaliyet günlüğü | Bir seçenek seçme |
-| Karar sonucu | Değişen değerler, sonuç metni | Sonraki tura geçme |
+| Karar sonucu | Değişen değerler, sonuç metni | Sonraki haftaya geçme |
 | Oyun sonu | Kazanma veya kaybetme nedeni, karne, karar özeti (v1.1: her kararın kasaya etkisi ve kalan kasa), sonucu kopyala | Yeniden başlatma |
 
 Seçim yapıldığı anda seçenekler kilitlenir. Sonuç metni oyuncu tarafından okunmadan yeni karta otomatik geçilmez.
@@ -431,7 +431,7 @@ Moral:     80 → 95                (+15)
 
 Müşteri bekledi, sonra vazgeçti. Ama artık açamadığı dosyanın standardı bize ait.
 
-[Sonraki tur]
+[Sonraki hafta]
 ```
 
 Buradaki günlük metni mizah içindir. Gösterge değişimlerinde esas alınacak bilgi, kartın sayısal etkileridir. Metin ile sayılar birbiriyle çelişmemelidir.
@@ -684,11 +684,11 @@ oyun %16,85. Yani düğmenin yeri artık bilgi taşımıyor; metni okumak gereki
 
 ### Kazanılabilir olduğu kanıtlandı mı?
 
-Kart seti `kart-seti-1.1` için evet: kazanan bir dizi baştan sona testte oynanıyor, ayrıca 3¹² = 531.441 dizinin %16,85’i kazanıyor (`tools/kapilar birim`). Bu, rastgele basan birinin kazanma oranıdır, insanların değil. Oyun bir kişi tarafından dört kez oynandı (bir kazanma, üç farklı kayıp); başka oyuncularla henüz denenmedi.
+Evet. Klasik destede (`kart-seti-1.2`) kazanan bir dizi baştan sona testte oynanıyor, ayrıca 3¹² = 531.441 dizinin %16,85’i kazanıyor (`tools/kapilar birim`). v1.2 havuzunda 100 deste tam sayıldı: her destede kazanma mümkün, rastgele oyunun kazanma oranı en az %19,68, ortanca %31,32, en çok %45,50. Havuz oyunu klasik desteden kolay. Bu, rastgele basan birinin kazanma oranıdır, insanların değil. Oyun bir kişi tarafından dört kez oynandı (bir kazanma, üç farklı kayıp); başka oyuncularla henüz denenmedi.
 
 ### Oyun kaydı neden yok?
 
-Kalıcı kayıt ilk sürüm kapsamına alınmadı. Önce baştan sona çalışan tek oturumluk oyun tamamlanacak.
+Kaldığın yerden devam etme yok: bir oyun birkaç dakika sürüyor. v1.2'den beri tarayıcı yalnız şunu hatırlıyor: kaç oyun oynandı, kaçı kazanıldı, en iyi kasa. Hesap yok, sunucuya bir şey gitmiyor.
 
 ### Yeni bir özellik ekleyebilir miyiz?
 

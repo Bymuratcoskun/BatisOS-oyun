@@ -27,6 +27,16 @@ export interface Card {
   options: readonly [Option, Option, Option];
 }
 
+/** v1.2 havuz evresi: destede başlangıç haftaları, gelişme haftaları ve final haftası. */
+export const STAGES = ['baslangic', 'gelisme', 'final'] as const;
+export type Stage = (typeof STAGES)[number];
+
+/** Havuzdaki kart: evresi ve (varsa) ailesi. Aynı aileden iki kart aynı destede çıkmaz. */
+export interface PoolCard extends Card {
+  stage: Stage;
+  family?: string;
+}
+
 export type Phase = 'start' | 'choosing' | 'result' | 'finished';
 export type Outcome = 'ongoing' | 'won' | 'lost';
 export type EndReason = 'cash_depleted' | 'customer_target_missed' | 'goals_met';
@@ -58,6 +68,8 @@ export interface GameState {
   openingNote: string | null;
   /** v1.1: seçeneklerin ekran sırasının tohumu (Mimari_sema'da yok; K14). Kuralları etkilemez. */
   seed: number;
+  /** v1.2: bu oyunun destesi, kart kimlikleri sırasıyla (hata bildirimi aynı desteyi yeniden kursun). */
+  deck: readonly string[];
 }
 
 /** Çekirdeğin her işlemi ya yeni durum ya da nedenli ret döndürür; sessiz geçiş yok. */

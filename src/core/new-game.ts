@@ -11,6 +11,8 @@ export const RULES = {
   turns: 12,
   customerTarget: 10,
   moraleMax: 100, // alt sınır yok: moral kasa gibi sıfırın altına inebilir, oyunu bitirmez (K13)
+  /** v1.2 deste biçimi: toplamı `turns` olmalı (havuz doğrulaması denetler). Sıra: başlangıç, gelişme, final. */
+  deckShape: { baslangic: 4, gelisme: 7, final: 1 },
 } as const;
 
 export const BLAME_NOTE = 'Sorumluluk devredildi.';
@@ -27,25 +29,37 @@ export function initialState(): GameState {
     endReason: null,
     openingNote: null,
     seed: 0,
+    deck: [],
   };
 }
 
-function freshGame(openingNote: string | null, seed: number): GameState {
-  return { ...initialState(), phase: 'choosing', openingNote, seed };
+function freshGame(openingNote: string | null, seed: number, deck: readonly string[]): GameState {
+  return { ...initialState(), phase: 'choosing', openingNote, seed, deck: [...deck] };
 }
 
-/** "Yeni oyun" — yalnız başlangıç görünümünde kabul edilir. `seed`: seçenek sırası (çekirdek rastgele üretmez). */
-export function newGame(state: GameState, seed: number): Result {
+function deckError(deck: readonly string[]): string | null {
+  return deck.length === RULES.turns ? null : `Deste ${deck.length} kart; tam olarak ${RULES.turns} olmalı`;
+}
+
+/**
+ * "Yeni oyun" — yalnız başlangıç görünümünde kabul edilir. `seed` ve `deck` dışarıdan gelir
+ * (çekirdek rastgele üretmez): seçenek sırası tohumdan, deste denetleyicinin kurduğu kart kimlikleri.
+ */
+export function newGame(state: GameState, seed: number, deck: readonly string[]): Result {
   if (state.phase !== 'start') {
     return { ok: false, reason: `Yeni oyun yalnız başlangıçta açılır (şu an: ${state.phase})`, state };
   }
-  return { ok: true, state: freshGame(null, seed) };
+  const e = deckError(deck);
+  if (e) return { ok: false, reason: e, state };
+  return { ok: true, state: freshGame(null, seed, deck) };
 }
 
-/** "Yeniden dene" / "Suçu teknoloji yığınına at" — yalnız oyun sonunda. Her yeni oyun yeni tohum alır. */
-export function restart(state: GameState, blameTech: boolean, seed: number): Result {
+/** "Yeniden dene" / "Suçu teknoloji yığınına at" — yalnız oyun sonunda. Her yeni oyun yeni tohum ve deste alır. */
+export function restart(state: GameState, blameTech: boolean, seed: number, deck: readonly string[]): Result {
   if (state.phase !== 'finished') {
     return { ok: false, reason: `Yeniden başlatma yalnız oyun sonunda yapılır (şu an: ${state.phase})`, state };
   }
-  return { ok: true, state: freshGame(blameTech ? BLAME_NOTE : null, seed) };
+  const e = deckError(deck);
+  if (e) return { ok: false, reason: e, state };
+  return { ok: true, state: freshGame(blameTech ? BLAME_NOTE : null, seed, deck) };
 }

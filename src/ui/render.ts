@@ -1,7 +1,10 @@
 // Arayüz: durumu gösterir, komut iletir. Kasa hesaplamaz, kazanma koşulu belirlemez.
 // Bütün metinler textContent ile yazılır — HTML olarak yorumlanmaz (Kullanilacak_Teknolojiler).
-import type { Command } from '../app/controller.ts';
+import type { Command, DeckMode } from '../app/controller.ts';
 import { CARD_SET_VERSION } from '../content/cards.ts';
+import { POOL_VERSION } from '../content/pool.ts';
+import type { Kayit } from '../app/kayit.ts';
+import { shareLink } from '../app/url.ts';
 import { buildReportCard } from '../core/calculate-awards.ts';
 import { RULES } from '../core/new-game.ts';
 import { optionOrder } from '../core/option-order.ts';
@@ -47,6 +50,13 @@ function change(n: number, unit = ''): HTMLElement {
   const arrow = n > 0 ? '▲ ' : n < 0 ? '▼ ' : '= ';
   return h('span', { class: `chg ${cls}` }, arrow + signed(n, unit));
 }
+/**
+ * v1.2 (YZ2): seçeneğin yazan etkisi ile gerçekleşen değişim farklıysa nedenini söyler
+ * ("+15" yazıyordu, moral 100'de kesildi → "▲ +10 (sınır 100)"). Fark yoksa boş.
+ */
+export function limitNote(intended: number, actual: number, limit: number): string {
+  return intended === actual ? '' : ` (sınır ${limit})`;
+}
 
 function effectsLine(e: Stats): HTMLElement {
   const part = (label: string, n: number, unit: string) =>
@@ -82,11 +92,12 @@ function logEntries(s: GameState): HTMLElement {
   );
 }
 
-function startView(dispatch: (c: Command) => void): HTMLElement {
+function startView(dispatch: (c: Command) => void, notice?: string): HTMLElement {
   return h(
     'section',
     { class: 'panel start' },
     h('h1', { tabindex: '-1' }, 'BatışOS'),
+    notice ? h('p', { class: 'notice', role: 'status', 'data-testid': 'uyari' }, notice) : false,
     h('p', { class: 'tagline' }, 'Girişimini batmadan önce batır.'),
     h(
       'p',
@@ -134,8 +145,14 @@ function choosingView(s: GameState, cards: readonly Card[], dispatch: (c: Comman
   );
 }
 
-function resultView(s: GameState, dispatch: (c: Command) => void): HTMLElement {
+function resultView(s: GameState, cards: readonly Card[], dispatch: (c: Command) => void): HTMLElement {
   const d = s.decisionHistory[s.decisionHistory.length - 1]!;
+  // Seçeneğin yazan etkisi (sınır notu için); bulunamazsa gerçekleşen değişim kullanılır, not çıkmaz.
+  const yazan = cards.find((c) => c.id === d.cardId)?.options.find((o) => o.id === d.optionId)?.effects ?? d.delta;
+  const notlu = (el: HTMLElement, note: string) => {
+    if (note) el.append(h('span', { class: 'limit-note', 'data-testid': 'sinir-notu' }, note));
+    return el;
+  };
   const row = (label: string, before: string, after: string, delta: HTMLElement) =>
     h('tr', {}, h('th', { scope: 'row' }, label), h('td', {}, `${before} → ${after}`), h('td', {}, delta));
   const ended = s.outcome !== 'ongoing';
@@ -150,8 +167,8 @@ function resultView(s: GameState, dispatch: (c: Command) => void): HTMLElement {
         'tbody',
         {},
         row('Kasa', money(d.before.cash), money(d.after.cash), change(d.delta.cash, ' TL')),
-        row('Müşteri', String(d.before.customers), String(d.after.customers), change(d.delta.customers)),
-        row('Moral', plain(d.before.morale), plain(d.after.morale), change(d.delta.morale)),
+        row('Müşteri', String(d.before.customers), String(d.after.customers), notlu(change(d.delta.customers), limitNote(yazan.customers, d.delta.customers, 0))),
+        row('Moral', plain(d.before.morale), plain(d.after.morale), notlu(change(d.delta.morale), limitNote(yazan.morale, d.delta.morale, RULES.moraleMax))),
       ),
     ),
     h('blockquote', { 'data-testid': 'sonuc-metni' }, d.log),
@@ -159,7 +176,7 @@ function resultView(s: GameState, dispatch: (c: Command) => void): HTMLElement {
     h(
       'button',
       { class: 'primary', onclick: () => dispatch(ended ? { type: 'show-results' } : { type: 'next-turn' }) },
-      ended ? 'Sonuçları gör' : 'Sonraki tur',
+      ended ? 'Sonuçları gör' : 'Sonraki hafta', // v1.2: üst çubukla aynı kelime (YZ2)
     ),
   );
 }
@@ -176,14 +193,14 @@ function endReasonText(s: GameState): string {
  * v1.1 paylaşılan sonuç metni. Sonuç ekranıyla aynı işlevlerden üretilir; ayrı hesap yapmaz.
  * Kimlik, hesap, kişisel bilgi içermez.
  */
-export function shareText(s: GameState): string {
+export function shareText(s: GameState, mode: DeckMode = 'havuz'): string {
   const r = buildReportCard(s);
   return [
     `BatışOS v${__SURUM__} — ${s.outcome === 'won' ? 'ŞİRKET AYAKTA' : 'ŞİRKET KAPANDI'}`,
     endReasonText(s),
-    `Kasa ${money(s.cash)} · Müşteri ${s.customers} / ${RULES.customerTarget} · Moral ${moraleText(s.morale)}`,
+    `Kasa ${money(s.cash)} · Müşteri ${s.customers} / ${RULES.customerTarget} · Moral ${moraleText(s.morale)} · Altyapı kararı ${r.infrastructureCount}`, // v1.2: altyapı sayısı (YZ2)
     r.awards.length ? `Unvanlar: ${r.awards.map((a) => a.title).join('; ')}` : 'Unvan yok. Vasatlık da bir başarıdır.',
-    `Sen de batır: ${__OYUN_ADRESI__}`,
+    `Sen de batır: ${shareLink(__OYUN_ADRESI__, mode, s.seed)}`, // v1.2: bağlantı aynı desteyi açar
   ].join('\n');
 }
 
@@ -210,7 +227,7 @@ function copyBlock(text: string): HTMLElement {
   return wrap;
 }
 
-function finishedView(s: GameState, dispatch: (c: Command) => void): HTMLElement {
+function finishedView(s: GameState, dispatch: (c: Command) => void, mode: DeckMode, kayit: Kayit | null | undefined): HTMLElement {
   const r = buildReportCard(s);
   const won = s.outcome === 'won';
   const reason = endReasonText(s);
@@ -223,12 +240,12 @@ function finishedView(s: GameState, dispatch: (c: Command) => void): HTMLElement
     h(
       'dl',
       { class: 'report' },
-      ...dl('Dayanılan süre', `${r.turnsSurvived} tur`),
+      ...dl('Dayanılan süre', `${r.turnsSurvived} hafta`), // v1.2: "tur" değil "hafta" (YZ2)
       ...dl('Kalan kasa', money(s.cash), 'son-kasa'),
       ...dl('Ödeme yapan müşteri', String(s.customers), 'son-musteri'),
       ...dl('Kurucu morali', moraleText(s.morale)),
       ...dl('Alınan altyapı kararı', String(r.infrastructureCount)),
-      ...dl('Son harcama', r.lastSpend ?? 'Hiç harcama yapılmadı. Şüpheli.'),
+      ...dl(won ? 'Son imza' : 'Son harcama', r.lastSpend ?? 'Hiç harcama yapılmadı. Şüpheli.'), // v1.2: kazanınca "Son imza" (YZ2, operatör onayı)
     ),
     h('p', { class: 'investor' }, h('strong', {}, 'Yatırımcı yorumu: '), r.investorComment),
     h('h2', {}, 'KURUCU KARNESİ'),
@@ -250,7 +267,8 @@ function finishedView(s: GameState, dispatch: (c: Command) => void): HTMLElement
         ),
       ),
     ),
-    copyBlock(shareText(s)),
+    copyBlock(shareText(s, mode)),
+    kayit === undefined ? false : h('p', { class: 'muted small', 'data-testid': 'kayit' }, kayitText(kayit)),
     h(
       'div',
       { class: 'restart' },
@@ -260,20 +278,41 @@ function finishedView(s: GameState, dispatch: (c: Command) => void): HTMLElement
   );
 }
 
-export function render(root: HTMLElement, s: GameState, cards: readonly Card[], dispatch: (c: Command) => void): void {
+/** Alt satırdaki sürüm: havuzda havuz sürümü, klasik destede kart seti (hata bildirimi hangi içerik olduğunu taşısın). */
+export function versionText(mode: DeckMode): string {
+  return mode === 'klasik' ? `v${__SURUM__} · ${CARD_SET_VERSION} · klasik` : `v${__SURUM__} · ${POOL_VERSION}`;
+}
+
+/** v1.2: yerel kayıt satırı. null = tarayıcı saklamıyor (sessiz geçilmez). */
+export function kayitText(k: Kayit | null): string {
+  if (k === null) return 'Bu tarayıcı sonuç saklamıyor (özel pencere ya da engellenmiş site verisi).';
+  const iyi = k.enIyiKasa === null ? 'henüz kazanılmış oyun yok' : `en iyi kasa ${money(k.enIyiKasa)}`;
+  return `Bu tarayıcıda: ${k.oynanan} oyun, ${k.kazanilan} kazanma · ${iyi}.`;
+}
+
+export interface RenderOpts {
+  mode?: DeckMode;
+  /** Başlangıç ekranında gösterilecek uyarı (ör. bozuk tohum). */
+  notice?: string;
+  /** Yerel kayıt; null = saklanamıyor; undefined = gösterilmez. */
+  kayit?: Kayit | null;
+}
+
+export function render(root: HTMLElement, s: GameState, cards: readonly Card[], dispatch: (c: Command) => void, opts: RenderOpts = {}): void {
+  const mode = opts.mode ?? 'havuz';
   let main: HTMLElement;
   switch (s.phase) {
     case 'start':
-      main = startView(dispatch);
+      main = startView(dispatch, opts.notice);
       break;
     case 'choosing':
       main = choosingView(s, cards, dispatch);
       break;
     case 'result':
-      main = resultView(s, dispatch);
+      main = resultView(s, cards, dispatch);
       break;
     case 'finished':
-      main = finishedView(s, dispatch);
+      main = finishedView(s, dispatch, mode, opts.kayit);
       break;
   }
   const showStats = s.phase !== 'start';
@@ -282,7 +321,7 @@ export function render(root: HTMLElement, s: GameState, cards: readonly Card[], 
     showStats ? statsBar(s) : '',
     h('main', { 'data-phase': s.phase }, main),
     showStats ? logEntries(s) : '',
-    h('footer', {}, 'BatışOS · eklenti sistemi yoktur ve olmayacaktır. · ', h('span', { 'data-testid': 'surum' }, `v${__SURUM__} · ${CARD_SET_VERSION}`)),
+    h('footer', {}, 'BatışOS · eklenti sistemi yoktur ve olmayacaktır. · ', h('span', { 'data-testid': 'surum' }, versionText(mode) + (mode === 'havuz' && s.phase !== 'start' ? ` · tohum ${s.seed}` : ''))),
   );
   // Yeni görünümde odak başlığa gider: klavye ve ekran okuyucu kullanıcısı nerede olduğunu bilir.
   root.querySelector<HTMLElement>('main h1')?.focus();

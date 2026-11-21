@@ -1,6 +1,7 @@
 // README "İçerik doğrulama" — gerçek kart seti temiz, bozuk setin her kusuru adıyla yakalanır.
 import { describe, expect, it } from 'vitest';
 import { CARDS } from '../../src/content/cards.ts';
+import { POOL } from '../../src/content/pool.ts';
 import { validateCards } from '../../src/content/validate-cards.ts';
 
 const clone = () => JSON.parse(JSON.stringify(CARDS)) as any[];
@@ -33,8 +34,8 @@ describe('Gerçek kart seti', () => {
 
   it('günlük metni müşteri kaybını söylüyorsa sayı da kayıp göstermeli (ve tersi değil)', () => {
     // README içerik kontrolü: "Gerçekte müşteri kaybı yokken metin müşteri sayısının azaldığını mı söylüyor?"
-    // İstisna yok: kart 1 "bicim" metni Ö1-A ile düzeltildi (K11), kapı 36 seçeneğin hepsini denetler.
-    const suspects = CARDS.flatMap((c) =>
+    // İstisna yok: kart 1 "bicim" metni Ö1-A ile düzeltildi (K11), kapı havuzun 81 seçeneğinin hepsini denetler.
+    const suspects = POOL.flatMap((c) => // v1.2: havuzun 27 kartı (klasik 12 dahil)
       c.options
         // "Çekirdek ayrıldı" gibi müşteri dışı fiiller yanlış alarm verdiği için yalın "ayrıldı" desende yok.
         .filter((o) => /gitti|kaybett|müşteri\S* ayrıldı|kendilerini kaldırdı/i.test(o.log) && o.effects.customers >= 0)
@@ -86,5 +87,41 @@ describe('Negatif kontrol: bozuk set reddedilir ve nedeni söylenir', () => {
   });
   it('dizi olmayan girdi', () => {
     expect(validateCards({})).toEqual(['Kart seti bir dizi değil']);
+  });
+});
+
+// K16: kartlarda gerçek marka adı yok (Excel kart 1'de kapıya takılmadan durmuştu; "kusur geçtiyse kapı eksik").
+// Teknoloji adları (Rust, Kubernetes) kurala göre serbest: espri "yanlış yerde doğru araç".
+// Sınır: liste tabanlı; listede olmayan bir markayı yakalamaz. Yeni marka görülürse listeye eklenir.
+export const MARKALAR = ['Excel', 'Word', 'PowerPoint', 'Google', 'Microsoft', 'Apple', 'Slack', 'Discord', 'WhatsApp',
+  'Instagram', 'Twitter', 'LinkedIn', 'YouTube', 'GitHub', 'Claude', 'Codex', 'Gemini', 'Copilot', 'ChatGPT', 'OpenAI',
+  'Figma', 'Notion', 'Stripe', 'Trello', 'Jira', 'Zoom', 'Teams'];
+/** Operatör kararını bekleyen, adı konmuş istisnalar. Karar verilince silinir (kapı istisnasız kalır). */
+const MARKA_ISTISNA: Record<string, string> = {}; // Discord istisnası K17 ile kapandı ("Topluluk sunucusu").
+
+function markaBul(cards: readonly any[]): string[] {
+  const out: string[] = [];
+  for (const c of cards) {
+    for (const [yer, metin] of [['başlık', c.title], ['durum', c.description]] as const) {
+      for (const m of MARKALAR) if (new RegExp(`\\b${m}`, 'u').test(metin)) out.push(`${c.id}/${yer}: ${m}`);
+    }
+    for (const o of c.options) {
+      if (MARKA_ISTISNA[`${c.id}/${o.id}`]) continue;
+      for (const m of MARKALAR) if (new RegExp(`\\b${m}`, 'u').test(`${o.text} ${o.log}`)) out.push(`${c.id}/${o.id}: ${m}`);
+    }
+  }
+  return out;
+}
+
+describe('Marka adı (K16)', () => {
+  it('gerçek kart setinde marka adı yok (istisnalar adıyla)', () => {
+    const ist = Object.entries(MARKA_ISTISNA);
+    if (ist.length) console.log(`MARKA-ISTISNA ${ist.map(([k, v]) => `${k} (${v})`).join('; ')}`);
+    expect(markaBul(POOL)).toEqual([]); // v1.2: havuzun 27 kartı
+  });
+  it('negatif kontrol: günlüğe marka konunca yakalanır', () => {
+    const c = clone();
+    c[0].options[0].log = 'Müşteri Excel’de açtı.';
+    expect(markaBul(c)).toEqual(['ilk-musteri/csv: Excel']);
   });
 });

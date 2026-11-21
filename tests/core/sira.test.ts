@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { initialState, newGame, restart } from '../../src/core/new-game.ts';
 import { newSeed, optionOrder } from '../../src/core/option-order.ts';
 import { CARDS } from '../../src/content/cards.ts';
-import { EARLY_BUST, must, play } from '../helpers.ts';
+import { EARLY_BUST, must, play, KLASIK_IDS } from '../helpers.ts';
 
 describe('Seçenek sırası', () => {
   it('her tohum ve turda [0,1,2]\'nin bir permütasyonu', () => {
@@ -32,9 +32,9 @@ describe('Seçenek sırası', () => {
   });
 
   it('yeni oyun ve yeniden başlatma verilen tohumu taşır; tohum kuralları değiştirmez', () => {
-    expect(must(newGame(initialState(), 42)).seed).toBe(42);
+    expect(must(newGame(initialState(), 42, KLASIK_IDS)).seed).toBe(42);
     const fin = play(CARDS, EARLY_BUST);
-    expect(must(restart(fin, false, 7)).seed).toBe(7);
+    expect(must(restart(fin, false, 7, KLASIK_IDS)).seed).toBe(7);
     // Aynı karar dizisi, farklı tohum: aynı sonuç (sıra yalnız ekran içindir).
     const a = play(CARDS, EARLY_BUST);
     expect({ ...a, seed: 0 }).toEqual({ ...play(CARDS, EARLY_BUST), seed: 0 });

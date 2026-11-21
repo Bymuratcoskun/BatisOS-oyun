@@ -5,7 +5,7 @@ import { BLAME_NOTE, initialState, newGame, restart, RULES } from '../../src/cor
 import type { GameState } from '../../src/core/types.ts';
 import { CARDS } from '../../src/content/cards.ts';
 import { moraleText } from '../../src/ui/render.ts';
-import { cardWith, EARLY_BUST, must, play, started, WIN } from '../helpers.ts';
+import { cardWith, EARLY_BUST, must, play, started, WIN, KLASIK_IDS } from '../helpers.ts';
 
 /** 12 kartlık sahte set: yalnız `last` kartının etkisi farklı. */
 function deckEndingWith(effects: { cash: number; customers: number; morale: number }) {
@@ -100,7 +100,7 @@ describe('Kabul ölçütleri (README)', () => {
   it('Yeniden başlatılır → önceki oyunun durumu temizlenir', () => {
     const fin = play(CARDS, EARLY_BUST);
     expect(fin.phase).toBe('finished');
-    const s = must(restart(fin, false, 1));
+    const s = must(restart(fin, false, 1, KLASIK_IDS));
     expect(s).toMatchObject({ phase: 'choosing', turnIndex: 0, cash: 100_000, customers: 0, morale: 80, outcome: 'ongoing', endReason: null, openingNote: null });
     expect(s.decisionHistory).toEqual([]);
   });
@@ -136,7 +136,7 @@ describe('Test senaryoları (README)', () => {
 
   it('“Suçu teknoloji yığınına at” → aynı sıfırlama + “Sorumluluk devredildi”', () => {
     const fin = play(CARDS, EARLY_BUST);
-    const s = must(restart(fin, true, 1));
+    const s = must(restart(fin, true, 1, KLASIK_IDS));
     expect(s).toMatchObject({ turnIndex: 0, cash: 100_000, customers: 0, morale: 80, openingNote: BLAME_NOTE });
     expect(s.decisionHistory).toEqual([]);
     expect(BLAME_NOTE).toBe('Sorumluluk devredildi.');
@@ -151,8 +151,8 @@ describe('Komutlar yanlış aşamada durumu değiştirmez (Mimari "Geçerli komu
   });
   it('Oyun sürerken yeni oyun / yeniden başlatma reddedilir', () => {
     const s = started();
-    expect(newGame(s, 1).ok).toBe(false);
-    expect(restart(s, false, 1).ok).toBe(false);
+    expect(newGame(s, 1, KLASIK_IDS).ok).toBe(false);
+    expect(restart(s, false, 1, KLASIK_IDS).ok).toBe(false);
   });
   it('Başka kartın seçeneği ve olmayan seçenek reddedilir', () => {
     const s = started();

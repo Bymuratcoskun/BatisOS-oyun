@@ -1,6 +1,10 @@
 import { applyChoice, nextTurn, showResults } from '../src/core/apply-choice.ts';
 import { initialState, newGame } from '../src/core/new-game.ts';
 import type { Card, GameState, Result } from '../src/core/types.ts';
+import { CARDS } from '../src/content/cards.ts';
+
+/** Klasik destenin kart kimlikleri (testler eski 12 kartla, eski sırayla oynar). */
+export const KLASIK_IDS: readonly string[] = CARDS.map((c) => c.id);
 
 /** Kayıtlı diziler (Geliştirme_Asamalari Aşama 4). Beklenen sonuçlar tests/core/kabul.test.ts'de. */
 export const WIN = ['csv', 'ode', 'konus', 'sor', 'odeme-sayfasi', 'yardim', 'durust', 'rapor', 'duzelt', 'gitme', 'haklisin', 'imzala'];
@@ -13,7 +17,7 @@ export function must(r: Result): GameState {
 }
 
 export function started(): GameState {
-  return must(newGame(initialState(), 1)); // tohum yalnız ekran sırasını etkiler; testler kimlikle oynar
+  return must(newGame(initialState(), 1, KLASIK_IDS)); // tohum yalnız ekran sırasını etkiler; testler kimlikle oynar, klasik destede
 }
 
 /** Bir seçim dizisini baştan oynar; oyun biterse durur ve sonuç ekranını açar. */

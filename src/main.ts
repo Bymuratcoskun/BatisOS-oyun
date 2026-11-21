@@ -1,20 +1,40 @@
 import './ui/styles.css';
 import { createController } from './app/controller.ts';
+import { depoAc, isle, oku, yaz, type Kayit } from './app/kayit.ts';
+import { parseHash } from './app/url.ts';
 import { CARDS } from './content/cards.ts';
-import { validateCards } from './content/validate-cards.ts';
+import { POOL } from './content/pool.ts';
+import { validateCards, validatePool } from './content/validate-cards.ts';
+import type { GameState } from './core/types.ts';
 import { render, renderContentError } from './ui/render.ts';
 
 const root = document.querySelector<HTMLElement>('#app');
 if (root === null) throw new Error('BatışOS: #app öğesi bulunamadı');
 
+// v1.2 adres: varsayılan havuz destesi; `#klasik` eski 12 kart; `#tohum-N` aynı deste (bozuksa uyarı).
+const secim = parseHash(location.hash);
+
 // Kartlar uygulama başında doğrulanır; geçersiz içerikle yeni oyun başlatılmaz.
-const errors = validateCards(CARDS);
+const errors = [...validateCards(CARDS).map((e) => `klasik deste: ${e}`), ...validatePool(POOL).map((e) => `havuz: ${e}`)];
 if (errors.length > 0) {
   console.error('[BatışOS] İçerik doğrulaması başarısız:\n' + errors.join('\n'));
   renderContentError(root, errors);
 } else {
-  const ctl = createController(CARDS, (s) => render(root, s, CARDS, ctl.dispatch));
-  render(root, ctl.getState(), CARDS, ctl.dispatch);
+  // Yerel kayıt: depo açılamazsa null ("saklamıyor" yazılır), oyun yine oynanır.
+  const depo = depoAc();
+  let kayit: Kayit | null = depo ? oku(depo) : null;
+  let oncekiAsama: GameState['phase'] = 'start';
+
+  const ciz = (s: GameState) => {
+    if (s.phase === 'finished' && oncekiAsama !== 'finished' && depo && kayit) {
+      const yeni = isle(kayit, s);
+      kayit = yaz(depo, yeni) ? yeni : null; // yazılamadıysa "saklamıyor" de, eski sayıyı gösterme
+    }
+    oncekiAsama = s.phase;
+    render(root, s, ctl.getCards(), ctl.dispatch, { mode: ctl.mode, notice: secim.notice, kayit });
+  };
+  const ctl = createController(POOL, CARDS, secim.mode, ciz, secim.seed);
+  ciz(ctl.getState());
 
   // Kısayol: 1/2/3 karar seçer. Düğmeler zaten Tab + Enter ile kullanılabilir.
   document.addEventListener('keydown', (e) => {
