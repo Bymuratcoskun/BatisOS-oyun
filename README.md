@@ -195,7 +195,7 @@ Hackathon sürümünün hedefi, baştan sona oynanabilen tek bir oyun döngüsü
 - [x] Kazanma ve kaybetme denetimi.
 - [x] Kurucu karnesi.
 - [x] Yeniden başlatma.
-- [ ] Baştan sona denenmiş bir demo akışı.
+- [ ] Baştan sona denenmiş bir demo akışı. *(Akış otomatik testte her koşuda oynanıyor; sesli sunum provası henüz yapılmadı.)*
 
 İlk sürümde kartlar sabit sırayla gösterilir. Rastgele kart seçimi hedeflenmez.
 
@@ -296,6 +296,9 @@ Denenmedi: başka işletim sistemi, WebKit/Safari, temiz bir makinede kurulum.
 Teknik kapsam: yerel oyun durumu ve tek ekranlı arayüz. Harici hizmet gereksinimi yok.
 
 ## Geliştirme planı
+
+> Durum: Aşama 1–4 tamamlandı; oyun yayında. Bu bölüm ilk planı olduğu gibi gösteriyor. Ayrıntılı
+> uygulama izi (kararlar, ölçümler, raporlar) geliştirme deposunda tutuluyor.
 
 ### Aşama 1 — Şirket batabiliyor
 
@@ -600,7 +603,10 @@ Unvanlar: Boş
 - Karar vermek için geri sayım uygulanmaz.
 - Animasyon, sonucu anlamanın zorunlu bir parçası olmaz.
 
-Ekran okuyucu desteğinin uygulanması ve sınanması, seçilecek arayüz teknolojisine göre netleştirilecektir. Test edilmeden erişilebilirlik uyumluluğu iddia edilmez.
+Ölçülen durum (`tests/e2e/erisilebilirlik.spec.ts`, Chromium + Firefox): yukarıdaki maddeler sınanıyor;
+axe-core WCAG 2.0/2.1 A ve AA taramasında ihlal 0; 360×640'tan 1920×1080'e beş ekran boyutunda taşma 0.
+
+Ekran okuyucuyla **denenmedi**; %200 yakınlaştırma **denenmedi**. Test edilmeden erişilebilirlik uyumluluğu iddia edilmez.
 
 ## Hackathon demo senaryosu
 
@@ -627,14 +633,14 @@ Sunum için ayrı ve gizli oyun kuralları kullanılmaz. Demo, normal oyun akı�
 
 ### Demo öncesi kontrol listesi
 
-- [ ] Oyun temiz başlangıç durumunda.
-- [ ] Kullanılacak karar dizisi baştan sona denendi.
-- [ ] Batış ekranına hangi turda ulaşılacağı biliniyor.
-- [ ] Kurucu karnesi beklenen sonucu veriyor.
-- [ ] Yeniden başlatma çalışıyor.
-- [ ] Sunum yapılan ekranda metinler okunuyor.
-- [ ] Harici bağlantı gereksinimi olup olmadığı doğrulandı.
-- [ ] Kurulum adımları başka bir temiz ortamda denendi veya denenmediği açıkça belirtildi.
+- [x] Oyun temiz başlangıç durumunda. *(art arda 5 oyun testi)*
+- [x] Kullanılacak karar dizisi baştan sona denendi. *(5 altyapı kararı, her test koşusunda)*
+- [x] Batış ekranına hangi turda ulaşılacağı biliniyor. *(5. hafta, kasa −10.000 TL)*
+- [x] Kurucu karnesi beklenen sonucu veriyor.
+- [x] Yeniden başlatma çalışıyor.
+- [x] Sunum yapılan ekranda metinler okunuyor. *(demo bilgisayarında, paketlenmiş sürümle oynandı)*
+- [x] Harici bağlantı gereksinimi olup olmadığı doğrulandı. *(yok: dış istekler kesilince de oynanıyor)*
+- [x] Kurulum adımları başka bir temiz ortamda denendi veya denenmediği açıkça belirtildi. *(**denenmedi**: açık depo kopyasında `npm ci` + bütün testler geçti, ama aynı makinede)*
 
 ## Proje riskleri
 
@@ -663,7 +669,12 @@ Hayır. Hicvin hedefi belirli bir teknoloji değil, ihtiyacı değerlendirmeden 
 
 ### En teknik seçeneği seçmek her zaman kaybettirecek mi?
 
-İlk kart seti tamamlanmadığı için bu konuda kesin bir oyun dengesi sözü verilmiyor. Kartların amacı, kararları bağlamlarıyla birlikte tartıştırmak; tek bir düğmeyi her durumda doğru veya yanlış yapmak değil.
+Bu kart setinde evet: her kartta en teknik (ve en pahalı) seçeneği seçen oyuncu 5. haftada batıyor.
+
+Bilinen sorun: en pahalı seçenek 12 kartın 12'sinde üçüncü sırada, ilk seçenek ise hiçbir kartta
+altyapı ya da tanıtım değil. Her kartta ilk seçeneği seçen oyuncu metni okumadan kazanıyor
+(74.700 TL, 21 müşteri). Kartların amacı tek bir düğmeyi her durumda doğru yapmak değildi; bu,
+sonraki sürümün ilk işlerinden biri.
 
 ### Neden müşteriler otomatik gelir üretmiyor?
 
@@ -671,7 +682,7 @@ Hayır. Hicvin hedefi belirli bir teknoloji değil, ihtiyacı değerlendirmeden 
 
 ### Kazanılabilir olduğu kanıtlandı mı?
 
-Kart seti `kart-seti-1` için evet: kazanan bir dizi baştan sona testte oynanıyor, ayrıca 3¹² = 531.441 dizinin %16,85’i kazanıyor (`tools/kapilar birim`). Bu, dengenin iyi olduğu anlamına gelmez; oynanarak doğrulanacak.
+Kart seti `kart-seti-1.1` için evet: kazanan bir dizi baştan sona testte oynanıyor, ayrıca 3¹² = 531.441 dizinin %16,85’i kazanıyor (`tools/kapilar birim`). Bu, rastgele basan birinin kazanma oranıdır, insanların değil. Oyun bir kişi tarafından dört kez oynandı (bir kazanma, üç farklı kayıp); başka oyuncularla henüz denenmedi.
 
 ### Oyun kaydı neden yok?
 
@@ -693,11 +704,12 @@ MIT. Ayrıntı: `LICENSE`. Kodu kullanabilir, değiştirebilir, dağıtabilirsin
 
 ## Emin olunamayanlar
 
-- Uygulama dili ve arayüz teknolojisi seçilmedi.
-- Hackathon süresi ve ekip büyüklüğü belirtilmediği için saat bazlı iş planı hazırlanmadı.
-- Toplam 12 kart hedefleniyor; bu belgede yalnızca 3 örnek kart tanımlandı.
-- Kart değerleri ve kazanma eşiği oynanış testleriyle doğrulanmadı.
-- Kurulum, test ve dağıtım adımları henüz doğrulanmadı.
+- Yalnız Fedora Linux 44'te, Chromium ve Firefox ile denendi. Safari/WebKit, Windows, macOS ve
+  mobil tarayıcılar denenmedi.
+- Ekran okuyucu ve %200 yakınlaştırma denenmedi.
+- Denge bir kişinin dört oyunuyla doğrulandı; başka oyuncuların oyunu anlayıp anlamadığı bilinmiyor.
+- Seçenek sırası sabit: ilk seçeneği hep seçmek kazandırıyor (yukarıda "Bilinen sorun").
+- Temiz bir makinede kurulum denenmedi.
 
 ***
 

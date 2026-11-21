@@ -2,7 +2,7 @@ import { applyChoice, nextTurn, showResults } from '../src/core/apply-choice.ts'
 import { initialState, newGame } from '../src/core/new-game.ts';
 import type { Card, GameState, Result } from '../src/core/types.ts';
 
-/** Kayıtlı diziler (Geliştirme_Asamalari Aşama 4). Beklenen sonuçlar tests/core/diziler.test.ts'de. */
+/** Kayıtlı diziler (Geliştirme_Asamalari Aşama 4). Beklenen sonuçlar tests/core/kabul.test.ts'de. */
 export const WIN = ['csv', 'ode', 'konus', 'sor', 'odeme-sayfasi', 'yardim', 'durust', 'rapor', 'duzelt', 'gitme', 'haklisin', 'imzala'];
 /** Erken batış: 5 altyapı, kendi entegrasyonu dahil → 5. turda kasa −10.000. */
 export const EARLY_BUST = ['bicim', 'kendimiz', 'rust', 'cekirdek', 'tasarim-sistemi'];
