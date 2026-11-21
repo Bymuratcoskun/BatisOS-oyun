@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# BatışOS kapıları. Kullanım: tools/kapilar [kapı-adı ...]   (adsız: .kapilar.conf'taki hepsi)
+# Her kapı ÇIKIŞ KODUNA ve ÇIKTIDAKİ BEKLENEN DESENE birlikte bakar; sayılar çıktıdan okunur.
+# Aracın kendisi hata verirse (çıkış ≠ 0, beklenen satır yok) kapı kırmızıdır — "temiz" sayılmaz.
+set -u
+export LC_ALL=C.UTF-8   # tr_TR'de [a-z] "i"yi kapsamıyor (Genel-Kurallar CALISMA-KURALLARI §6)
+cd "$(dirname "$0")/.." || exit 2
+LOGDIR="${KAPI_LOG_DIR:-$(mktemp -d)}"
+mkdir -p "$LOGDIR"
+
+kirmizi() { echo "KIRMIZI $1 · $2"; return 1; }
+
+kapi_bos_dosya() {
+  # Takip edilen dosya 0 bayta düşerse kırmızı (Genel-Kurallar KURALLAR §4).
+  local n=0 bos=0 f
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then kirmizi bos-dosya "git deposu değil"; return 1; fi
+  while IFS= read -r -d '' f; do
+    [ -f "$f" ] || continue
+    n=$((n + 1))
+    if [ ! -s "$f" ]; then bos=$((bos + 1)); echo "  boş: $f"; fi
+  done < <(git ls-files -z --cached --others --exclude-standard)
+  echo "BOS-DOSYA-KAPISI dosya=$n bos=$bos"
+  [ "$n" -gt 0 ] || { kirmizi bos-dosya "hiç dosya sayılmadı (araç çalışmadı mı?)"; return 1; }
+  [ "$bos" -eq 0 ] || { kirmizi bos-dosya "$bos boş dosya"; return 1; }
+}
+
+kapi_bagsiz_test() {
+  # Bağlanmamış test koşulmayan testtir: her test dosyası bir kapının dizininde olmalı.
+  local f bagsiz=0 n=0
+  while IFS= read -r f; do
+    n=$((n + 1))
+    case "$f" in
+      tests/core/*.test.ts | tests/content/*.test.ts | tests/e2e/*.spec.ts) ;;
+      *) bagsiz=$((bagsiz + 1)); echo "  bağsız: $f" ;;
+    esac
+  done < <(find tests src -type f \( -name '*.test.ts' -o -name '*.spec.ts' \) | sort)
+  echo "BAGSIZ-TEST-KAPISI test_dosyasi=$n bagsiz=$bagsiz"
+  [ "$n" -gt 0 ] || { kirmizi bagsiz-test "hiç test dosyası bulunamadı"; return 1; }
+  [ "$bagsiz" -eq 0 ] || { kirmizi bagsiz-test "$bagsiz dosya hiçbir kapıya bağlı değil"; return 1; }
+}
+
+kapi_tur() {
+  local log="$LOGDIR/tur.log" rc
+  npx --no-install tsc --noEmit >"$log" 2>&1; rc=$?
+  local hata; hata=$(grep -c 'error TS' "$log")
+  echo "TUR-KAPISI cikis=$rc hata=$hata"
+  [ "$rc" -eq 0 ] && [ "$hata" -eq 0 ] || { sed -n '1,20p' "$log"; kirmizi tur "tsc çıkış=$rc, $hata tür hatası"; return 1; }
+}
+
+kapi_birim() {
+  local log="$LOGDIR/birim.log" rc
+  npx --no-install vitest run --silent=false >"$log" 2>&1; rc=$?
+  local satir; satir=$(grep -E '^ +Tests +' "$log" | tail -1)
+  local gecen; gecen=$(echo "$satir" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+  local kalan; kalan=$(echo "$satir" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+')
+  grep -E '^DENGE ' "$log" | sed 's/^/  /'
+  echo "BIRIM-KAPISI cikis=$rc gecen=${gecen:-?} basarisiz=${kalan:-0}"
+  [ -n "$satir" ] || { tail -20 "$log"; kirmizi birim "vitest özet satırı yok (araç çalışmadı)"; return 1; }
+  grep -q '^DENGE kart-seti' "$log" || { kirmizi birim "denge raporu üretilmedi"; return 1; }
+  [ "$rc" -eq 0 ] && [ -z "$kalan" ] && [ -n "$gecen" ] || { grep -E 'FAIL|AssertionError|Error:' "$log" | head -20; kirmizi birim "çıkış=$rc, başarısız=${kalan:-?}"; return 1; }
+}
+
+kapi_oyun() {
+  # Gerçek tarayıcıda, derlenmiş paket üzerinde. Ekran açılmaz (headless), GPU kullanılmaz.
+  local log="$LOGDIR/oyun.log" rc
+  env -u DISPLAY -u WAYLAND_DISPLAY npx --no-install playwright test >"$log" 2>&1; rc=$?
+  local gecen; gecen=$(grep -oE '^ +[0-9]+ passed' "$log" | grep -oE '[0-9]+' | tail -1)
+  local kalan; kalan=$(grep -oE '^ +[0-9]+ (failed|flaky)' "$log" | grep -oE '[0-9]+' | paste -sd+ | bc 2>/dev/null)
+  echo "OYUN-KAPISI cikis=$rc gecen=${gecen:-?} basarisiz=${kalan:-0}"
+  [ "$rc" -eq 0 ] && [ -n "$gecen" ] && [ -z "$kalan" ] || { grep -E '✘|Error|failed' "$log" | head -20; kirmizi oyun "çıkış=$rc, başarısız=${kalan:-?}"; return 1; }
+}
+
+if [ "$#" -gt 0 ]; then kapilar=("$@"); else mapfile -t kapilar < <(grep -vE '^\s*(#|$)' .kapilar.conf); fi
+[ "${#kapilar[@]}" -gt 0 ] || { echo "KIRMIZI · .kapilar.conf boş ya da okunamadı"; exit 2; }
+
+yesil=0; kirmizi_sayi=0; kirmizilar=()
+for k in "${kapilar[@]}"; do
+  fn="kapi_${k//-/_}"
+  echo "── $k"
+  if ! declare -F "$fn" >/dev/null; then
+    echo "KIRMIZI $k · böyle bir kapı yok (bağlanmamış)"; kirmizi_sayi=$((kirmizi_sayi + 1)); kirmizilar+=("$k"); continue
+  fi
+  if "$fn"; then yesil=$((yesil + 1)); else kirmizi_sayi=$((kirmizi_sayi + 1)); kirmizilar+=("$k"); fi
+done
+echo "KAPILAR yesil=$yesil kirmizi=$kirmizi_sayi${kirmizilar[*]:+ (${kirmizilar[*]})} gunluk=$LOGDIR"
+[ "$kirmizi_sayi" -eq 0 ]

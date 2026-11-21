@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Açık depoya (BatisOS-oyun) yalnız oyunun kendisini kopyalar: kaynak, testler, README, LICENSE.
+# docs/ (worklog, seyir, roastlar, kaynak belgeler) GİTMEZ — bu depo gizli kalır.
+# Kullanım: tools/acik-depo-esitle <hedef-dizin>
+# Kopyadan sonra hedefte: npm ci && tools/kapilar (kanıt) → commit → push.
+set -euo pipefail
+export LC_ALL=C.UTF-8
+cd "$(dirname "$0")/.."
+hedef="${1:?hedef dizin ver}"
+[ -d "$hedef/.git" ] || { echo "HATA: $hedef bir git deposu değil" >&2; exit 2; }
+[ -z "$(git status --porcelain)" ] || { echo "HATA: kaynak depoda kaydedilmemiş değişiklik var; önce commit" >&2; exit 2; }
+
+# -z: git, Türkçe karakterli yolları yoksa tırnaklayıp kaçışlar ("docs/kaynak/Geli\305\237…") ve
+# '^docs/' süzgeci onları kaçırır (2026-11-21'de böyle bir dosya sızıyordu; cp hatası yakaladı).
+mapfile -d '' -t dosyalar < <(git ls-files -z | grep -zv '^docs/')
+for f in "${dosyalar[@]}"; do
+  case "$f" in docs/*|*'"'*|*'\'*) echo "HATA: süzgeçten geçmemesi gereken yol: $f" >&2; exit 2 ;; esac
+done
+[ "${#dosyalar[@]}" -gt 0 ] || { echo "HATA: kopyalanacak dosya bulunamadı" >&2; exit 2; }
+
+# Hedefte artık kaynakta olmayan dosyaları sil (yalnız takip edilenler; .git'e dokunmaz).
+( cd "$hedef" && git ls-files -z ) | while IFS= read -r -d '' f; do
+  printf '%s\n' "${dosyalar[@]}" | grep -qxF -- "$f" || { rm -f -- "$hedef/$f"; echo "  silindi: $f"; }
+done
+for f in "${dosyalar[@]}"; do
+  mkdir -p "$hedef/$(dirname "$f")"
+  cp -p -- "$f" "$hedef/$f"
+done
+echo "ACIK-DEPO-ESITLE dosya=${#dosyalar[@]} kaynak=$(git rev-parse --short HEAD)"
