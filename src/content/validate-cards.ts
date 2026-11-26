@@ -1,6 +1,7 @@
 import { buildDeck } from '../core/deck.ts';
 import { RULES } from '../core/new-game.ts';
 import { STAGES, TAGS, type Card, type PoolCard } from '../core/types.ts';
+import type { ChainTemplate } from './chains.ts';
 
 /**
  * İçerik doğrulama — README "İçerik doğrulama" listesi.
@@ -113,4 +114,38 @@ function checkCards(input: readonly unknown[], errors: string[]): void {
 
 function nonEmpty(v: unknown): v is string {
   return typeof v === 'string' && v.trim().length > 0;
+}
+
+/**
+ * v1.3 takip kartları: kart kuralları (checkCards) + yer tutucular yalnız tanımlı adlardan + kimlikler havuzla
+ * çakışmaz. Tanımsız yer tutucu ekranda "{xyz}" diye kalırdı; burada adıyla kırmızıdır.
+ */
+export function validateChainTemplates(templates: Readonly<Record<string, ChainTemplate>>, pool: readonly Card[]): string[] {
+  const errors: string[] = [];
+  const list = Object.entries(templates);
+  checkCards(list.map(([, t]) => t.card), errors);
+  const havuz = new Set(pool.map((c) => c.id));
+  const yer = (where: string, text: string, izinli: readonly string[]) => {
+    for (const m of text.matchAll(/\{([^}]*)\}/g)) {
+      if (!izinli.includes(m[1]!)) errors.push(`${where}: tanımsız yer tutucu {${m[1]}} (tanımlılar: ${izinli.join(', ')})`);
+    }
+  };
+  for (const [id, t] of list) {
+    const w = `zincir "${id}"`;
+    if (havuz.has(t.card.id)) errors.push(`${w}: kart kimliği "${t.card.id}" havuzda da var`);
+    const kart = ['hafta', 'karar', 'musteri'] as const;
+    yer(`${w} başlık`, t.card.title, kart);
+    yer(`${w} açıklama`, t.card.description, kart);
+    t.card.options.forEach((o) => {
+      yer(`${w} seçenek "${o.id}" metni`, o.text, kart);
+      yer(`${w} seçenek "${o.id}" günlüğü`, o.log, kart);
+    });
+    yer(`${w} son söz`, t.epilogue, ['karar', 'musteri']);
+    yer(`${w} uyarı`, t.hintSlot, ['gun', 'esik']);
+    yer(`${w} uyarı (yer yok)`, t.hintEnd, ['esik']);
+    for (const [ad, metin] of [['son söz', t.epilogue], ['uyarı', t.hintSlot], ['uyarı (yer yok)', t.hintEnd]] as const) {
+      if (!nonEmpty(metin)) errors.push(`${w}: ${ad} boş`);
+    }
+  }
+  return errors;
 }

@@ -2,7 +2,15 @@
 import { describe, expect, it } from 'vitest';
 import { CARDS } from '../../src/content/cards.ts';
 import { POOL } from '../../src/content/pool.ts';
-import { validateCards } from '../../src/content/validate-cards.ts';
+import { validateCards, validateChainTemplates } from '../../src/content/validate-cards.ts';
+import { CHAIN_TEMPLATES } from '../../src/content/chains.ts';
+import { followUpCard } from '../../src/core/chains.ts';
+import { CHAIN_IDS } from '../../src/core/types.ts';
+
+/** v1.3: takip kartları, örnek değerlerle doldurulmuş hâlde (kapılar ekranda görünen metni denetlesin). */
+const ZINCIR_KARTLARI = CHAIN_IDS.map((z) => followUpCard({ chain: z, turn: 2, quote: 'Kendi mail sunucumuzu kuralım', slot: 5 }, 6));
+/** Müşteri-kaybı kapısının adı konmuş istisnaları: giden müşteri değil. */
+const KAYIP_ISTISNA: Record<string, string> = { 'zincir-bakim/hazir-servis': '“emek … gitti”: giden müşteri değil, emek' };
 
 const clone = () => JSON.parse(JSON.stringify(CARDS)) as any[];
 
@@ -35,8 +43,9 @@ describe('Gerçek kart seti', () => {
   it('günlük metni müşteri kaybını söylüyorsa sayı da kayıp göstermeli (ve tersi değil)', () => {
     // README içerik kontrolü: "Gerçekte müşteri kaybı yokken metin müşteri sayısının azaldığını mı söylüyor?"
     // İstisna yok: kart 1 "bicim" metni Ö1-A ile düzeltildi (K11), kapı havuzun 81 seçeneğinin hepsini denetler.
-    const suspects = POOL.flatMap((c) => // v1.2: havuzun 27 kartı (klasik 12 dahil)
+    const suspects = [...POOL, ...ZINCIR_KARTLARI].flatMap((c) => // v1.2 havuz 27 kart + v1.3 takip kartları
       c.options
+        .filter((o) => !KAYIP_ISTISNA[`${c.id}/${o.id}`])
         // "Çekirdek ayrıldı" gibi müşteri dışı fiiller yanlış alarm verdiği için yalın "ayrıldı" desende yok.
         .filter((o) => /gitti|kaybett|müşteri\S* ayrıldı|kendilerini kaldırdı/i.test(o.log) && o.effects.customers >= 0)
         .map((o) => `${c.id}/${o.id}`),
@@ -117,11 +126,35 @@ describe('Marka adı (K16)', () => {
   it('gerçek kart setinde marka adı yok (istisnalar adıyla)', () => {
     const ist = Object.entries(MARKA_ISTISNA);
     if (ist.length) console.log(`MARKA-ISTISNA ${ist.map(([k, v]) => `${k} (${v})`).join('; ')}`);
-    expect(markaBul(POOL)).toEqual([]); // v1.2: havuzun 27 kartı
+    expect(markaBul([...POOL, ...ZINCIR_KARTLARI])).toEqual([]); // v1.2 havuz + v1.3 takip kartları
   });
   it('negatif kontrol: günlüğe marka konunca yakalanır', () => {
     const c = clone();
     c[0].options[0].log = 'Müşteri Excel’de açtı.';
     expect(markaBul(c)).toEqual(['ilk-musteri/csv: Excel']);
+  });
+});
+
+describe('v1.3 takip kartları', () => {
+  it('doğrulamadan geçer: 3 kart, yer tutucular tanımlı, kimlikler havuzla çakışmaz', () => {
+    expect(validateChainTemplates(CHAIN_TEMPLATES, POOL)).toEqual([]);
+    expect(ZINCIR_KARTLARI.map((c) => c.id)).toEqual(['zincir-bakim', 'zincir-soz', 'zincir-teslim']);
+  });
+  it('negatif kontrol: tanımsız yer tutucu ve havuzla çakışan kimlik adıyla yakalanır', () => {
+    const t = JSON.parse(JSON.stringify(CHAIN_TEMPLATES));
+    t.bakim.card.description = '{haftaa}. hafta';
+    t.soz.epilogue = '{hafta} sözü'; // son sözde hafta tanımlı değil
+    t.teslim.card.id = 'kurumsal';
+    expect(validateChainTemplates(t, POOL)).toEqual([
+      'zincir "bakim" açıklama: tanımsız yer tutucu {haftaa} (tanımlılar: hafta, karar, musteri)',
+      'zincir "soz" son söz: tanımsız yer tutucu {hafta} (tanımlılar: karar, musteri)',
+      'zincir "teslim": kart kimliği "kurumsal" havuzda da var',
+    ]);
+  });
+  it('kayıp istisnası yalnız kendi seçeneğini geçirir (adıyla, gerçekten var)', () => {
+    for (const k of Object.keys(KAYIP_ISTISNA)) {
+      const [cid, oid] = k.split('/');
+      expect(ZINCIR_KARTLARI.find((c) => c.id === cid)?.options.some((o) => o.id === oid)).toBe(true);
+    }
   });
 });

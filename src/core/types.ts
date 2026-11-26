@@ -37,6 +37,20 @@ export interface PoolCard extends Card {
   family?: string;
 }
 
+/** v1.3 olay zincirleri: A bakım talebi, B verilen söz, C teslim sırası (TASARIM-v1.3-zincirler). */
+export const CHAIN_IDS = ['bakim', 'soz', 'teslim'] as const;
+export type ChainId = (typeof CHAIN_IDS)[number];
+
+/** Açılan bir zincir. `slot` takip kartının haftası (1'den); null = yer yok ya da oyun bitti → son söz. */
+export interface ChainEvent {
+  chain: ChainId;
+  /** Tetikleyen hafta. */
+  turn: number;
+  /** Tetikleyen seçeneğin metni (C'de boş). */
+  quote: string;
+  slot: number | null;
+}
+
 export type Phase = 'start' | 'choosing' | 'result' | 'finished';
 export type Outcome = 'ongoing' | 'won' | 'lost';
 export type EndReason = 'cash_depleted' | 'customer_target_missed' | 'goals_met';
@@ -70,6 +84,10 @@ export interface GameState {
   seed: number;
   /** v1.2: bu oyunun destesi, kart kimlikleri sırasıyla (hata bildirimi aynı desteyi yeniden kursun). */
   deck: readonly string[];
+  /** v1.3: zincirler bu oyunda açık mı (havuz evet, `#klasik` hayır). */
+  chainsOn: boolean;
+  /** v1.3: açılan zincirler, açılış sırasıyla. Takip kartları `deck` içinde de yerini almıştır. */
+  chains: readonly ChainEvent[];
 }
 
 /** Çekirdeğin her işlemi ya yeni durum ya da nedenli ret döndürür; sessiz geçiş yok. */

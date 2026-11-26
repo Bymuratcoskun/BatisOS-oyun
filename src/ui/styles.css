@@ -66,6 +66,10 @@ button.primary { background: var(--accent); color: #1a1a1a; border-color: var(--
 }
 .opt-text { font-weight: 600; }
 .fx-line { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); }
+/* v1.3: zincir uyarısı — seçeneğin üçüncü satırı */
+.chain-hint { grid-column: 2; font-size: 0.85rem; color: var(--accent); }
+.epilogues { padding-left: 1.2rem; }
+.epilogues li { margin: 4px 0; }
 .fx.up, .chg.up { color: var(--up); }
 .fx.down, .chg.down { color: var(--down); }
 

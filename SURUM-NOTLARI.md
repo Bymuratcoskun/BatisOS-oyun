@@ -1,5 +1,24 @@
 # Sürüm notları
 
+## v1.3.0
+
+**Eklenen**
+- Kararlar geri dönüyor: üç olay zinciri. İlk altyapı kararın 3 hafta sonra bakım ister, ilk tanıtım sözün
+  3 hafta sonra hatırlatılır, 6 müşteriye ulaşınca 3 hafta sonra teslim sırası sorulur. Takip kartı o haftanın
+  kartının yerini alır ve senin kararını alıntılar. Oyun yine 12 hafta; son hafta değişmez.
+- Zinciri açacak seçeneğin altında ne olacağı kesin yazar. Takip kartına yer kalmazsa sonuç ekranında
+  "GERİDE KALANLAR" satırı olur.
+- `#klasik` deste zincirsiz, eskisi gibi.
+
+**Değişen**
+- Havuz biraz zorlaştı: rastgele oyunun kazanma ortancası %31,32 → %29,14 (100 deste).
+- Aynı `#tohum-…` bağlantısı aynı desteyle başlar; zincir açılınca oyun kararlara göre ayrılır.
+
+**Bilinen sorunlar**
+- Zincirleri yalnız geliştirici oynadı (bir oyun). Gecikme, eşik ve takip kartı sayıları tahmin.
+- Havuz klasik desteden hâlâ kolay (rastgele oyunda ortanca %29, klasik %17).
+- Ekran okuyucuyla denenmedi. Yalnız Fedora Linux'ta, Chromium ve Firefox ile denendi.
+
 ## v1.2.0
 
 **Eklenen**

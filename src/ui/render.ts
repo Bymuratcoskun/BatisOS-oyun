@@ -6,6 +6,8 @@ import { POOL_VERSION } from '../content/pool.ts';
 import type { Kayit } from '../app/kayit.ts';
 import { shareLink } from '../app/url.ts';
 import { buildReportCard } from '../core/calculate-awards.ts';
+import { cardAt, chainEpilogues, chainHints } from '../core/chains.ts';
+import { ZINCIR_VERSION } from '../content/chains.ts';
 import { RULES } from '../core/new-game.ts';
 import { optionOrder } from '../core/option-order.ts';
 import type { Card, DecisionRecord, GameState, Stats } from '../core/types.ts';
@@ -118,7 +120,7 @@ function startView(dispatch: (c: Command) => void, notice?: string): HTMLElement
 }
 
 function choosingView(s: GameState, cards: readonly Card[], dispatch: (c: Command) => void): HTMLElement {
-  const card = cards[s.turnIndex]!;
+  const card = cardAt(s, cards)!; // v1.3: takip kartı geldiyse o
   const buttons: HTMLButtonElement[] = [];
   const choose = (optionId: string) => {
     // Görsel kilit; asıl koruma çekirdekte (aşama + aktif kart denetimi).
@@ -133,6 +135,8 @@ function choosingView(s: GameState, cards: readonly Card[], dispatch: (c: Comman
       h('span', { class: 'key' }, String(i + 1)),
       h('span', { class: 'opt-text' }, o.text),
       effectsLine(o.effects),
+      // v1.3: zinciri açacak seçenekte kesin uyarı; söylediği gerçekleşir (tests/core/zincir.test.ts)
+      ...chainHints(s, o).map((z) => h('span', { class: 'chain-hint', 'data-testid': 'zincir-uyari' }, z.text)),
     ) as HTMLButtonElement;
     buttons.push(b);
   });
@@ -148,7 +152,7 @@ function choosingView(s: GameState, cards: readonly Card[], dispatch: (c: Comman
 function resultView(s: GameState, cards: readonly Card[], dispatch: (c: Command) => void): HTMLElement {
   const d = s.decisionHistory[s.decisionHistory.length - 1]!;
   // Seçeneğin yazan etkisi (sınır notu için); bulunamazsa gerçekleşen değişim kullanılır, not çıkmaz.
-  const yazan = cards.find((c) => c.id === d.cardId)?.options.find((o) => o.id === d.optionId)?.effects ?? d.delta;
+  const yazan = cardAt(s, cards)?.options.find((o) => o.id === d.optionId)?.effects ?? d.delta;
   const notlu = (el: HTMLElement, note: string) => {
     if (note) el.append(h('span', { class: 'limit-note', 'data-testid': 'sinir-notu' }, note));
     return el;
@@ -252,6 +256,11 @@ function finishedView(s: GameState, dispatch: (c: Command) => void, mode: DeckMo
     r.awards.length
       ? h('ul', { class: 'awards', 'data-testid': 'unvanlar' }, ...r.awards.map((a) => h('li', {}, h('strong', {}, a.title), h('span', {}, a.quip))))
       : h('p', { class: 'muted', 'data-testid': 'unvanlar' }, 'Bu oyunda özel bir unvan kazanılmadı. Vasatlık da bir başarıdır; sadece ödülü yoktur.'),
+    // v1.3: açılıp takip kartı gelmemiş zincirler
+    ...(() => {
+      const son = chainEpilogues(s);
+      return son.length ? [h('h2', {}, 'GERİDE KALANLAR'), h('ul', { class: 'epilogues', 'data-testid': 'son-soz' }, ...son.map((x) => h('li', {}, x)))] : [];
+    })(),
     h('h2', { id: 'karar-ozeti' }, 'KARAR ÖZETİ'),
     // v1.1: harcama ve kalan kasa — oyuncu batışını adım adım görsün. Değerler yalnız karar geçmişinden.
     h(
@@ -280,7 +289,7 @@ function finishedView(s: GameState, dispatch: (c: Command) => void, mode: DeckMo
 
 /** Alt satırdaki sürüm: havuzda havuz sürümü, klasik destede kart seti (hata bildirimi hangi içerik olduğunu taşısın). */
 export function versionText(mode: DeckMode): string {
-  return mode === 'klasik' ? `v${__SURUM__} · ${CARD_SET_VERSION} · klasik` : `v${__SURUM__} · ${POOL_VERSION}`;
+  return mode === 'klasik' ? `v${__SURUM__} · ${CARD_SET_VERSION} · klasik` : `v${__SURUM__} · ${POOL_VERSION} · ${ZINCIR_VERSION}`;
 }
 
 /** v1.2: yerel kayıt satırı. null = tarayıcı saklamıyor (sessiz geçilmez). */

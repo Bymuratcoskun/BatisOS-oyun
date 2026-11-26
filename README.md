@@ -199,6 +199,8 @@ Hackathon sürümünün hedefi, baştan sona oynanabilen tek bir oyun döngüsü
 
 İlk sürümde (v1.0–v1.1) kartlar sabit sırayla gösterilir. v1.2'den beri her oyunda 27 kartlık bir havuzdan 12 kartlık bir deste kurulur: 4 başlangıç, 7 gelişme, 1 final; benzer kartlar aynı destede çıkmaz. Eski 12 kart eski sırasıyla için adresin sonuna `#klasik`, aynı deste için `#tohum-…` (kopyalanan sonucun bağlantısı bunu taşır).
 
+v1.3'ten beri havuz oyununda kararlar geri döner (üç olay zinciri): ilk altyapı kararı 3 hafta sonra bakım ister, ilk tanıtım sözü 3 hafta sonra hatırlatılır, 6 müşteriye ulaşınca 3 hafta sonra teslim sırası sorulur. Takip kartı o haftanın kartının yerini alır ve oyuncunun kararını alıntılar; ne olacağı seçeneğin altında önceden yazar. Oyun yine 12 hafta, son hafta değişmez. Takip kartına yer kalmazsa sonuç ekranında "GERİDE KALANLAR" satırı olur. `#klasik` zincirsizdir.
+
 ## Kapsam dışı
 
 Aşağıdaki özellikler hackathon sürümüne dahil değildir:
@@ -684,7 +686,7 @@ oyun %16,85. Yani düğmenin yeri artık bilgi taşımıyor; metni okumak gereki
 
 ### Kazanılabilir olduğu kanıtlandı mı?
 
-Evet. Klasik destede (`kart-seti-1.2`) kazanan bir dizi baştan sona testte oynanıyor, ayrıca 3¹² = 531.441 dizinin %16,85’i kazanıyor (`tools/kapilar birim`). v1.2 havuzunda 100 deste tam sayıldı: her destede kazanma mümkün, rastgele oyunun kazanma oranı en az %19,68, ortanca %31,32, en çok %45,50. Havuz oyunu klasik desteden kolay. Bu, rastgele basan birinin kazanma oranıdır, insanların değil. Oyun bir kişi tarafından dört kez oynandı (bir kazanma, üç farklı kayıp); başka oyuncularla henüz denenmedi.
+Evet. Klasik destede (`kart-seti-1.2`) kazanan bir dizi baştan sona testte oynanıyor, ayrıca 3¹² = 531.441 dizinin %16,85’i kazanıyor (`tools/kapilar birim`). v1.2 havuzunda 100 deste tam sayıldı: her destede kazanma mümkün, rastgele oyunun kazanma oranı en az %19,68, ortanca %31,32, en çok %45,50. v1.3'te zincirlerle aynı ölçüm: en az %14,24, ortanca %29,14, en çok %39,24. Havuz oyunu klasik desteden hâlâ kolay. Bu, rastgele basan birinin kazanma oranıdır, insanların değil. İnsan oyunları: geliştirici birkaç oyun, iki dış oyuncu (ikisi de kazandı ve nedenini anlattı).
 
 ### Oyun kaydı neden yok?
 
@@ -709,9 +711,11 @@ MIT. Ayrıntı: `LICENSE`. Kodu kullanabilir, değiştirebilir, dağıtabilirsin
 - Yalnız Fedora Linux 44'te, Chromium ve Firefox ile denendi. Safari/WebKit, Windows, macOS ve
   mobil tarayıcılar denenmedi.
 - Ekran okuyucuyla denenmedi.
-- Denge bir kişinin dört oyunuyla doğrulandı; başka oyuncuların oyunu anlayıp anlamadığı bilinmiyor.
+- Denge geliştiricinin oyunları ve iki dış oyuncuyla denendi; cevap verenler anlayanlardı, oynamayanların
+  neyi anlamadığı bilinmiyor. Zincirleri yalnız geliştirici oynadı.
 - Seçenek sırasını karıştırmak, sayıları okuyan oyuncunun ikilemini çözmüyor: etkiler düğmede yazdığı
-  için müşteri getireni seçen yine rahat kazanıyor. Bu, olay zincirleri ve gerçek tercihler işi (sonraki sürümler).
+  için müşteri getireni seçen yine rahat kazanıyor. v1.3 zincirleri bunu yalnız biraz azaltıyor; gerçek
+  tercihler sonraki sürümün işi.
 - Temiz bir makinede kurulum denenmedi.
 
 ***

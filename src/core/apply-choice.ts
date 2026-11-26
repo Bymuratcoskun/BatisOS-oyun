@@ -1,5 +1,6 @@
+import { cardAt, followUpId, planChains } from './chains.ts';
+import { applyEffects } from './effects.ts';
 import { evaluateOutcome } from './evaluate-outcome.ts';
-import { RULES } from './new-game.ts';
 import type { Card, DecisionRecord, GameState, Result, Stats } from './types.ts';
 
 
@@ -18,7 +19,7 @@ export function applyChoice(
   if (state.phase !== 'choosing') {
     return { ok: false, reason: `Karar yalnız "karar bekleniyor" aşamasında alınır (şu an: ${state.phase})`, state };
   }
-  const card = cards[state.turnIndex];
+  const card = cardAt(state, cards); // v1.3: takip kartı geldiyse o hafta onun yerine
   if (card === undefined) {
     return { ok: false, reason: `Tur ${state.turnIndex + 1} için kart yok`, state };
   }
@@ -31,11 +32,7 @@ export function applyChoice(
   }
 
   const before: Stats = { cash: state.cash, customers: state.customers, morale: state.morale };
-  const after: Stats = {
-    cash: before.cash + option.effects.cash, // kasa negatif olabilir; oyun hemen biter
-    customers: Math.max(0, before.customers + option.effects.customers),
-    morale: Math.min(RULES.moraleMax, before.morale + option.effects.morale), // alt sınır yok, oyunu bitirmez (K13)
-  };
+  const after = applyEffects(before, option.effects); // kasa negatif olabilir; moralin alt sınırı yok (K13)
   const delta: Stats = {
     cash: after.cash - before.cash,
     customers: after.customers - before.customers,
@@ -57,9 +54,14 @@ export function applyChoice(
   // Tur sayacının tek yetkilisi turnIndex (Mimari: "bağımsız iki tur sayacı tutulmaz").
   const { outcome, endReason } = evaluateOutcome(after.cash, after.customers, state.turnIndex + 1, cards.length);
 
+  // v1.3: açılan zincirler; takip kartı destede o haftanın yerini alır (uyarıyla aynı işlev: planChains).
+  const yeni = planChains(state, option);
+  const deck = [...state.deck];
+  for (const e of yeni) if (e.slot !== null) deck[e.slot - 1] = followUpId(e.chain);
+
   return {
     ok: true,
-    state: { ...state, ...after, phase: 'result', decisionHistory, outcome, endReason },
+    state: { ...state, ...after, phase: 'result', decisionHistory, outcome, endReason, deck, chains: [...state.chains, ...yeni] },
   };
 }
 

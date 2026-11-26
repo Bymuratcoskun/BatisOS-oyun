@@ -8,12 +8,15 @@
 // 4. Rapor, eşik YOK: deste başına kazanma oranı en az/ortanca/en çok; eksi moral görülen deste sayısı.
 //    Eşiğin dayanağı yok (oyuncu oyunları belirleyecek), uydurulmadı.
 // 5. Strateji kapısı havuzda: "hep k. düğme" oranı rastgele oyunun ortalamasından en çok 4 SD sapar.
+// v1.3: oyun yayındaki hâliyle, ZİNCİRLİ oynanır (ZINCIR=1). Her hafta kart çekirdekten okunur (cardAt):
+// takip kartı geldiyse seçenekler onunkidir. v1.2 karşılaştırması: ZINCIR=0 ile aynı test.
 import { describe, expect, it } from 'vitest';
 import { applyChoice, nextTurn } from '../../src/core/apply-choice.ts';
 import { buildDeck } from '../../src/core/deck.ts';
+import { cardAt } from '../../src/core/chains.ts';
 import { initialState, newGame } from '../../src/core/new-game.ts';
 import { optionOrder } from '../../src/core/option-order.ts';
-import type { GameState, PoolCard } from '../../src/core/types.ts';
+import type { Card, GameState, Option, PoolCard } from '../../src/core/types.ts';
 import { POOL, POOL_VERSION } from '../../src/content/pool.ts';
 import { must } from '../helpers.ts';
 
@@ -22,22 +25,24 @@ const deste = (seed: number): PoolCard[] => {
   if (!r.ok) throw new Error(r.reason);
   return r.deck;
 };
-const basla = (d: readonly PoolCard[], seed = 1) => must(newGame(initialState(), seed, d.map((c) => c.id)));
+const ZINCIR = process.env['ZINCIR'] !== '0';
+const basla = (d: readonly PoolCard[], seed = 1) => must(newGame(initialState(), seed, d.map((c) => c.id), ZINCIR));
 
-function oyna(d: readonly PoolCard[], ids: readonly string[], seed = 1): GameState {
+/** Her hafta o haftanın kartına (takip kartı olabilir) seçici uygulanır. */
+function oyna(d: readonly PoolCard[], sec: (c: Card, hafta: number) => Option, seed = 1): GameState {
   let s = basla(d, seed);
-  for (const id of ids) {
-    s = must(applyChoice(s, d, d[s.turnIndex]!.id, id));
+  for (;;) {
+    const k = cardAt(s, d)!;
+    s = must(applyChoice(s, d, k.id, sec(k, s.turnIndex).id));
     if (s.outcome !== 'ongoing') return s;
     s = must(nextTurn(s, d));
   }
-  return s;
 }
 
 function say(d: readonly PoolCard[]) {
   const t = { total: 0, won: 0, cash: 0, missed: 0, minMoral: Infinity };
   const walk = (s: GameState) => {
-    const card = d[s.turnIndex]!;
+    const card = cardAt(s, d)!;
     for (const o of card.options) {
       const r = must(applyChoice(s, d, card.id, o.id));
       t.minMoral = Math.min(t.minMoral, r.morale);
@@ -56,10 +61,9 @@ function say(d: readonly PoolCard[]) {
   return t;
 }
 
-const enIyi = (d: readonly PoolCard[], puan: (o: PoolCard['options'][number]) => number) =>
-  d.map((c) => c.options.reduce((b, o) => (puan(o) > puan(b) ? o : b)).id);
+const enIyi = (puan: (o: Option) => number) => (c: Card) => c.options.reduce((b, o) => (puan(o) > puan(b) ? o : b));
 
-describe(`Havuz dengesi (${POOL_VERSION}, 100 deste)`, () => {
+describe(`Havuz dengesi (${POOL_VERSION}${ZINCIR ? ' + zincir' : ''}, 100 deste)`, () => {
   const desteler = Array.from({ length: 100 }, (_, s) => deste(s));
   const sayim = desteler.map(say);
   const oran = sayim.map((t) => t.won / t.total);
@@ -72,9 +76,9 @@ describe(`Havuz dengesi (${POOL_VERSION}, 100 deste)`, () => {
   it('her destede "müşteri odaklı" kazanır, "altyapı odaklı" kasa bitimiyle kaybeder', () => {
     const bozuk: string[] = [];
     desteler.forEach((d, s) => {
-      const m = oyna(d, enIyi(d, (o) => o.effects.customers));
+      const m = oyna(d, enIyi((o) => o.effects.customers));
       if (m.outcome !== 'won') bozuk.push(`tohum ${s} müşteri odaklı: ${m.endReason} kasa=${m.cash} müşteri=${m.customers}`);
-      const a = oyna(d, enIyi(d, (o) => (o.tags.includes('altyapı') ? 1 : 0)));
+      const a = oyna(d, enIyi((o) => (o.tags.includes('altyapı') ? 1 : 0)));
       if (a.endReason !== 'cash_depleted') bozuk.push(`tohum ${s} altyapı odaklı: ${a.endReason}`);
     });
     expect(bozuk).toEqual([]);
@@ -85,7 +89,7 @@ describe(`Havuz dengesi (${POOL_VERSION}, 100 deste)`, () => {
     const y = (x: number) => `${(100 * x).toFixed(2)}%`;
     const eksi = sayim.filter((t) => t.minMoral < 0).length;
     console.log(
-      `DENGE ${POOL_VERSION} deste=100 kazanma en_az=${y(sirali[0]!)} ortanca=${y(sirali[50]!)} en_cok=${y(sirali[99]!)} ortalama=${y(oran.reduce((a, b) => a + b) / 100)} | eksi_moral_gorulen_deste=${eksi}/100 en_dusuk_moral=${Math.min(...sayim.map((t) => t.minMoral))}`,
+      `DENGE ${POOL_VERSION}${ZINCIR ? '+zincir' : ''} deste=100 kazanma en_az=${y(sirali[0]!)} ortanca=${y(sirali[50]!)} en_cok=${y(sirali[99]!)} ortalama=${y(oran.reduce((a, b) => a + b) / 100)} | eksi_moral_gorulen_deste=${eksi}/100 en_dusuk_moral=${Math.min(...sayim.map((t) => t.minMoral))}`,
     );
     expect(sirali[0]).toBeGreaterThan(0);
   });
@@ -98,11 +102,11 @@ describe(`Havuz dengesi (${POOL_VERSION}, 100 deste)`, () => {
       let w = 0;
       for (let seed = 0; seed < 1000; seed++) {
         const d = deste(seed);
-        if (oyna(d, d.map((c, i) => c.options[optionOrder(seed, i)[k]!]!.id), seed).outcome === 'won') w++;
+        if (oyna(d, (c, i) => c.options[optionOrder(seed, i)[k]!]!, seed).outcome === 'won') w++;
       }
       return w / 1000;
     });
-    console.log(`DENGE strateji_havuz tohum=1000 rastgele_ortalama=${(100 * p).toFixed(2)}% esik=±${(400 * sd).toFixed(1)}puan ${hep.map((o, k) => `hep-${k + 1}=${(100 * o).toFixed(1)}%`).join(' ')}`);
+    console.log(`DENGE strateji_havuz${ZINCIR ? '+zincir' : ''} tohum=1000 rastgele_ortalama=${(100 * p).toFixed(2)}% esik=±${(400 * sd).toFixed(1)}puan ${hep.map((o, k) => `hep-${k + 1}=${(100 * o).toFixed(1)}%`).join(' ')}`);
     for (const o of hep) expect(Math.abs(o - p)).toBeLessThan(4 * sd);
   });
 });

@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { CARD_SET_VERSION } from '../../src/content/cards.ts';
 import { POOL_VERSION } from '../../src/content/pool.ts';
+import { ZINCIR_VERSION } from '../../src/content/chains.ts';
 import { EARLY_BUST, WIN } from '../helpers.ts';
 
 const kasa = (p: Page) => p.getByTestId('kasa');
@@ -206,7 +207,7 @@ test('havuz destesi (varsayılan): oyun sonuna kadar oynanır, desteler oyundan 
     return basliklar;
   };
   await page.goto('./');
-  await expect(page.getByTestId('surum')).toHaveText(`v${surum} · ${POOL_VERSION}`);
+  await expect(page.getByTestId('surum')).toHaveText(`v${surum} · ${POOL_VERSION} · ${ZINCIR_VERSION}`);
   await page.getByRole('button', { name: 'Şirketi kur' }).click();
   await expect(page.getByTestId('hafta')).toHaveText('Hafta 1 / 12');
   const birinci = await oyunOyna();
@@ -223,6 +224,10 @@ test('#tohum-N: aynı bağlantı aynı desteyi ve aynı seçenek sırasını aç
   const { buildDeck } = await import('../../src/core/deck.ts');
   const { POOL } = await import('../../src/content/pool.ts');
   const { optionOrder } = await import('../../src/core/option-order.ts');
+  const { cardAt } = await import('../../src/core/chains.ts');
+  const { applyChoice, nextTurn } = await import('../../src/core/apply-choice.ts');
+  const { initialState, newGame } = await import('../../src/core/new-game.ts');
+  const { must } = await import('../helpers.ts');
   const seed = 42; // havuz denge testinin ölçtüğü 0..99 aralığında: müşteri odaklı bu destede kazanıyor
   const r = buildDeck(POOL, seed);
   if (!r.ok) throw new Error(r.reason);
@@ -232,8 +237,10 @@ test('#tohum-N: aynı bağlantı aynı desteyi ve aynı seçenek sırasını aç
     await page.getByRole('button', { name: 'Şirketi kur' }).click();
     await expect(page.getByTestId('surum')).toContainText(`tohum ${seed}`);
     const gorulen: string[] = [];
+    // v1.3: beklenen kart çekirdekten (cardAt) — zincir açılınca takip kartı o haftanın yerini alır.
+    let s = must(newGame(initialState(), seed, r.deck.map((c) => c.id), true));
     for (let i = 0; i < 12; i++) {
-      const kart = r.deck[i]!;
+      const kart = cardAt(s, r.deck)!;
       await expect(page.getByTestId('kart-baslik')).toHaveText(kart.title);
       const sira = await page.locator('.option').evaluateAll((bs) => bs.map((b) => (b as HTMLElement).dataset['option']));
       expect(sira).toEqual(optionOrder(seed, i).map((k) => kart.options[k]!.id));
@@ -242,6 +249,8 @@ test('#tohum-N: aynı bağlantı aynı desteyi ve aynı seçenek sırasını aç
       const enIyi = kart.options.reduce((b, o) => (o.effects.customers > b.effects.customers ? o : b));
       await page.locator(`.option[data-option="${enIyi.id}"]`).click();
       await page.getByRole('button', { name: /^(Sonraki hafta|Sonuçları gör)$/ }).click();
+      s = must(applyChoice(s, r.deck, kart.id, enIyi.id));
+      if (i < 11) s = must(nextTurn(s, r.deck));
     }
     await expect(page.getByTestId('bitis-baslik')).toHaveText('ŞİRKET AYAKTA');
     return gorulen;

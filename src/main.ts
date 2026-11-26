@@ -4,7 +4,8 @@ import { depoAc, isle, oku, yaz, type Kayit } from './app/kayit.ts';
 import { parseHash } from './app/url.ts';
 import { CARDS } from './content/cards.ts';
 import { POOL } from './content/pool.ts';
-import { validateCards, validatePool } from './content/validate-cards.ts';
+import { CHAIN_TEMPLATES } from './content/chains.ts';
+import { validateCards, validateChainTemplates, validatePool } from './content/validate-cards.ts';
 import type { GameState } from './core/types.ts';
 import { render, renderContentError } from './ui/render.ts';
 
@@ -15,7 +16,7 @@ if (root === null) throw new Error('BatışOS: #app öğesi bulunamadı');
 const secim = parseHash(location.hash);
 
 // Kartlar uygulama başında doğrulanır; geçersiz içerikle yeni oyun başlatılmaz.
-const errors = [...validateCards(CARDS).map((e) => `klasik deste: ${e}`), ...validatePool(POOL).map((e) => `havuz: ${e}`)];
+const errors = [...validateCards(CARDS).map((e) => `klasik deste: ${e}`), ...validatePool(POOL).map((e) => `havuz: ${e}`), ...validateChainTemplates(CHAIN_TEMPLATES, POOL)];
 if (errors.length > 0) {
   console.error('[BatışOS] İçerik doğrulaması başarısız:\n' + errors.join('\n'));
   renderContentError(root, errors);

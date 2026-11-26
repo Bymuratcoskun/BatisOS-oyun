@@ -30,11 +30,13 @@ export function initialState(): GameState {
     openingNote: null,
     seed: 0,
     deck: [],
+    chainsOn: false,
+    chains: [],
   };
 }
 
-function freshGame(openingNote: string | null, seed: number, deck: readonly string[]): GameState {
-  return { ...initialState(), phase: 'choosing', openingNote, seed, deck: [...deck] };
+function freshGame(openingNote: string | null, seed: number, deck: readonly string[], chainsOn: boolean): GameState {
+  return { ...initialState(), phase: 'choosing', openingNote, seed, deck: [...deck], chainsOn };
 }
 
 function deckError(deck: readonly string[]): string | null {
@@ -44,22 +46,23 @@ function deckError(deck: readonly string[]): string | null {
 /**
  * "Yeni oyun" — yalnız başlangıç görünümünde kabul edilir. `seed` ve `deck` dışarıdan gelir
  * (çekirdek rastgele üretmez): seçenek sırası tohumdan, deste denetleyicinin kurduğu kart kimlikleri.
+ * v1.3: `chainsOn` olay zincirlerini açar (havuz); varsayılan kapalı (klasik, eski testler).
  */
-export function newGame(state: GameState, seed: number, deck: readonly string[]): Result {
+export function newGame(state: GameState, seed: number, deck: readonly string[], chainsOn = false): Result {
   if (state.phase !== 'start') {
     return { ok: false, reason: `Yeni oyun yalnız başlangıçta açılır (şu an: ${state.phase})`, state };
   }
   const e = deckError(deck);
   if (e) return { ok: false, reason: e, state };
-  return { ok: true, state: freshGame(null, seed, deck) };
+  return { ok: true, state: freshGame(null, seed, deck, chainsOn) };
 }
 
 /** "Yeniden dene" / "Suçu teknoloji yığınına at" — yalnız oyun sonunda. Her yeni oyun yeni tohum ve deste alır. */
-export function restart(state: GameState, blameTech: boolean, seed: number, deck: readonly string[]): Result {
+export function restart(state: GameState, blameTech: boolean, seed: number, deck: readonly string[], chainsOn = false): Result {
   if (state.phase !== 'finished') {
     return { ok: false, reason: `Yeniden başlatma yalnız oyun sonunda yapılır (şu an: ${state.phase})`, state };
   }
   const e = deckError(deck);
   if (e) return { ok: false, reason: e, state };
-  return { ok: true, state: freshGame(blameTech ? BLAME_NOTE : null, seed, deck) };
+  return { ok: true, state: freshGame(blameTech ? BLAME_NOTE : null, seed, deck, chainsOn) };
 }

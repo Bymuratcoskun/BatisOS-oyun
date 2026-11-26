@@ -49,7 +49,8 @@ export function createController(
         const d = freshDeck();
         if (!d.ok) return { ok: false, reason: d.reason, state };
         const ids = d.deck.map((c) => c.id);
-        const r = cmd.type === 'new-game' ? newGame(state, d.seed, ids) : restart(state, cmd.blameTech, d.seed, ids);
+        const zincir = mode === 'havuz'; // v1.3: klasik deste zincirsiz (tasarım kuralı 7)
+        const r = cmd.type === 'new-game' ? newGame(state, d.seed, ids, zincir) : restart(state, cmd.blameTech, d.seed, ids, zincir);
         return r.ok ? { ...r, deck: d.deck } : r;
       }
       case 'choose':
