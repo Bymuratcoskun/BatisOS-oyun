@@ -11,12 +11,19 @@ export interface Award {
   quip: string;
 }
 
+/** Bütün unvan kimlikleri (v1.4: çeviri kapısı her birinin İngilizcesini arar). */
+export const AWARD_IDS = ['mimar-sinan', 'acik-kaynak-fedaisi', 'sunum-unicornu', 'istemeden-ceo'] as const;
+
 export interface ReportCard {
   awards: Award[];
   turnsSurvived: number;
   infrastructureCount: number;
   lastSpend: string | null;
   investorComment: string;
+  /** v1.4: yorumun anahtarı (çeviri). */
+  investorKey: InvestorKey;
+  /** v1.4: son harcamanın kaydı; çeviri kart ve seçenek kimliğinden yapılır. */
+  lastSpendRecord: DecisionRecord | null;
 }
 
 export function countTag(history: readonly DecisionRecord[], tag: Tag): number {
@@ -63,15 +70,19 @@ export function calculateAwards(state: GameState): Award[] {
   return awards;
 }
 
-function investorComment(state: GameState, infra: number): string {
-  if (state.endReason === 'goals_met') {
-    return '“Müşteriyle konuşmak işe yaramış. Bunu kimseye söylemeyin, sektör bozulur.”';
-  }
-  if (state.endReason === 'customer_target_missed') {
-    return '“Kasada para var, müşteri yok. Bu bir şirket değil, kumbara.”';
-  }
-  if (infra >= 4) return '“Keşke bir kere para almayı deneseydiniz.”';
-  return '“Parayı bu hızla yakmanın tek daha hızlı yolu sobaydı. Onu da kendiniz yazardınız.”';
+/** Yatırımcı yorumları; anahtar, arayüzde çeviri içindir (v1.4). Metinler v1.3'tekiyle aynı. */
+export const INVESTOR_COMMENTS = {
+  kazandi: '“Müşteriyle konuşmak işe yaramış. Bunu kimseye söylemeyin, sektör bozulur.”',
+  kumbara: '“Kasada para var, müşteri yok. Bu bir şirket değil, kumbara.”',
+  altyapi: '“Keşke bir kere para almayı deneseydiniz.”',
+  soba: '“Parayı bu hızla yakmanın tek daha hızlı yolu sobaydı. Onu da kendiniz yazardınız.”',
+} as const;
+export type InvestorKey = keyof typeof INVESTOR_COMMENTS;
+
+function investorKey(state: GameState, infra: number): InvestorKey {
+  if (state.endReason === 'goals_met') return 'kazandi';
+  if (state.endReason === 'customer_target_missed') return 'kumbara';
+  return infra >= 4 ? 'altyapi' : 'soba';
 }
 
 export function buildReportCard(state: GameState): ReportCard {
@@ -84,6 +95,8 @@ export function buildReportCard(state: GameState): ReportCard {
     turnsSurvived: h.length,
     infrastructureCount: infra,
     lastSpend: last === undefined ? null : last.optionText,
-    investorComment: investorComment(state, infra),
+    investorComment: INVESTOR_COMMENTS[investorKey(state, infra)],
+    investorKey: investorKey(state, infra),
+    lastSpendRecord: last ?? null,
   };
 }

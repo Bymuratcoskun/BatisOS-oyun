@@ -8,9 +8,19 @@ Bir müşteri basit bir özellik ister. Sen genel amaçlı bir altyapı gelişti
 
 Burada yanlış kararlar hata değil, oynanışın kendisidir.
 
-> Proje durumu: İlk sürüm. 12 kartla baştan sona oynanıyor, bütün testleri geçiyor.
+> Proje durumu: 27 kartlık havuz, olay zincirleri, Türkçe ve İngilizce. Baştan sona oynanıyor, bütün testleri geçiyor.
 >
 > **Tarayıcıda oyna:** https://bymuratcoskun.github.io/BatisOS-oyun/
+>
+> **Oyun rehberi:** [Türkçe](REHBER.md) · [English](GUIDE.md)
+
+### In English
+
+BatışOS is a short, comic, turn-based startup game in your browser. You have 12 weeks, 100,000 TL and zero
+customers. Every week an event card offers three decisions: build the small thing the customer asked for, or
+write your own engine, framework, mail server or theme engine first. The engineering choices make morale
+soar and the cash vanish. **Play in English:** https://bymuratcoskun.github.io/BatisOS-oyun/?lang=en · the full
+guide is in [GUIDE.md](GUIDE.md). The rest of this README is the Turkish design document.
 
 ## İçindekiler
 
@@ -717,6 +727,8 @@ MIT. Ayrıntı: `LICENSE`. Kodu kullanabilir, değiştirebilir, dağıtabilirsin
   için müşteri getireni seçen yine rahat kazanıyor. v1.3 zincirleri bunu yalnız biraz azaltıyor; gerçek
   tercihler sonraki sürümün işi.
 - Temiz bir makinede kurulum denenmedi.
+- İngilizce metinler (v1.4) yapay zekâ çevirisidir; anadili İngilizce olan biri okumadı. Esprilerin
+  İngilizcede de güldürdüğü ölçülmedi; İngilizce oyunu henüz bir oyuncu oynamadı.
 
 ***
 

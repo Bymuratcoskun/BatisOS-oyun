@@ -1,0 +1,34 @@
+#!/usr/bin/env -S node
+// REHBER.md (Türkçe) ve GUIDE.md (İngilizce) dosyalarını src/i18n/rehber.ts'ten üretir.
+// Kullanım: tools/rehber-yaz            → dosyaları yazar
+//           tools/rehber-yaz --denetle  → yazmaz; dosya üretilenden farklıysa adıyla kırmızı (çıkış 1)
+// Aynı denetim birim kapısında da koşar (tests/content/rehber.test.ts).
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { REHBER_DOSYALARI, rehberMarkdown } from '../src/i18n/rehber.ts';
+
+const kok = join(dirname(fileURLToPath(import.meta.url)), '..');
+const adres = JSON.parse(readFileSync(join(kok, 'package.json'), 'utf8')).homepage;
+if (typeof adres !== 'string' || !adres.startsWith('https://')) {
+  console.error('REHBER-YAZ HATA: package.json homepage yok ya da https değil');
+  process.exit(2);
+}
+const denetle = process.argv.includes('--denetle');
+let farkli = 0;
+for (const [dil, dosya] of Object.entries(REHBER_DOSYALARI)) {
+  const yol = join(kok, dosya);
+  const yeni = rehberMarkdown(dil, adres);
+  let eski = null;
+  try {
+    eski = readFileSync(yol, 'utf8');
+  } catch {
+    /* yok */
+  }
+  if (eski === yeni) continue;
+  farkli++;
+  if (denetle) console.error(`REHBER-YAZ BAYAT: ${dosya} kaynaktan üretilenle aynı değil (tools/rehber-yaz ile yeniden üret)`);
+  else writeFileSync(yol, yeni);
+}
+console.log(`REHBER-YAZ ${denetle ? 'denetim' : 'yazim'} dosya=${Object.keys(REHBER_DOSYALARI).length} farkli=${farkli}`);
+process.exit(denetle && farkli > 0 ? 1 : 0);

@@ -88,7 +88,7 @@ import { defineConfig, devices } from '@playwright/test';
 // Geçici: yayindaki adrese karşı. kararlilik.spec yerel pakete özgü (127.0.0.1) olduğu için hariç.
 export default defineConfig({
   testDir: 'tests/e2e', testIgnore: ['kararlilik.spec.ts'], retries: 0, workers: 1,
-  use: { baseURL: '$ADRES', headless: true },
+  use: { baseURL: '$ADRES', headless: true, locale: 'tr-TR' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }, { name: 'firefox', use: { ...devices['Desktop Firefox'] } }],
 });
 EOF

@@ -63,9 +63,9 @@ export function planChains(state: GameState, option: Option): ChainEvent[] {
 }
 
 /** Alıntı içinde çift tırnak tek tırnağa döner: “Sitene ‘yapay zekâ destekli’ yaz”. */
-const icAlinti = (s: string) => s.replace(/“/g, '‘').replace(/”/g, '’');
+export const icAlinti = (s: string) => s.replace(/“/g, '‘').replace(/”/g, '’');
 
-function fill(text: string, v: Record<string, string | number>): string {
+export function fill(text: string, v: Record<string, string | number>): string {
   return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? String(v[k]) : m)); // tanımsız yer tutucu kalır → doğrulama yakalar
 }
 
@@ -111,9 +111,12 @@ export function chainHints(state: GameState, option: Option): ChainHint[] {
   });
 }
 
+/** Açılıp takip kartı oynanmamış zincirler (son söz bunlar için yazılır). */
+export function unplayedChains(state: GameState): ChainEvent[] {
+  return state.chains.filter((e) => !state.decisionHistory.some((d) => d.cardId === followUpId(e.chain)));
+}
+
 /** Sonuç ekranı: açılıp takip kartı oynanmamış zincirlerin son sözü. */
 export function chainEpilogues(state: GameState): string[] {
-  return state.chains
-    .filter((e) => !state.decisionHistory.some((d) => d.cardId === followUpId(e.chain)))
-    .map((e) => fill(CHAIN_TEMPLATES[e.chain].epilogue, { karar: icAlinti(e.quote), musteri: state.customers }));
+  return unplayedChains(state).map((e) => fill(CHAIN_TEMPLATES[e.chain].epilogue, { karar: icAlinti(e.quote), musteri: state.customers }));
 }

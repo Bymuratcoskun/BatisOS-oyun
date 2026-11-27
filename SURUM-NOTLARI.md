@@ -1,5 +1,21 @@
 # Sürüm notları
 
+## v1.4.0
+
+**Eklenen**
+- İngilizce: bütün kartlar, takip kartları, unvanlar, sonuç ekranı ve paylaşılan sonuç. Tarayıcı Türkçe
+  değilse oyun İngilizce açılır; üst çubuktaki düğme dili oyunun ortasında da değiştirir ve seçim bu
+  tarayıcıda hatırlanır. Adrese `?lang=en` ya da `?lang=tr` yazılabilir. İngilizce paylaşılan bağlantı
+  oyunu İngilizce açar. Aynı tohum iki dilde aynı oyunu verir.
+- Oyun rehberi, Türkçe ve İngilizce: oyunun içinde "Nasıl oynanır?" ekranı, depoda `REHBER.md` ve
+  `GUIDE.md`. Amaç, kurallar, göstergeler, zincirler, deste ve tohum, unvanlar, paylaşma, klavye, gizlilik,
+  ipuçları ve sık sorulan sorular.
+
+**Bilinen sorunlar**
+- İngilizce metinler yapay zekâ çevirisidir; anadili İngilizce olan biri okumadı. İngilizce oyunu
+  henüz bir oyuncu oynamadı.
+- Ekran okuyucuyla denenmedi. Yalnız Fedora Linux'ta, Chromium ve Firefox ile denendi.
+
 ## v1.3.0
 
 **Eklenen**

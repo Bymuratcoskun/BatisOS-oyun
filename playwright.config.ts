@@ -8,7 +8,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [['list']],
-  use: { baseURL: 'http://127.0.0.1:4317', headless: true },
+  // v1.4: oyun dili tarayıcının dilinden seçilir; testler Türkçe tarayıcı gibi açılır (İngilizce ayrı testte).
+  use: { baseURL: 'http://127.0.0.1:4317', headless: true, locale: 'tr-TR' },
   webServer: {
     command: 'npm run build && npx vite preview --host 127.0.0.1 --port 4317 --strictPort',
     url: 'http://127.0.0.1:4317',

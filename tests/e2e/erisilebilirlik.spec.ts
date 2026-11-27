@@ -47,24 +47,53 @@ async function axeIhlalleri(page: Page): Promise<string[]> {
 }
 
 /** Dört görünümün her birinde ölçüm fonksiyonunu çağırır. */
-async function herGorunumde(page: Page, olc: (gorunum: string) => Promise<void>) {
+// v1.4: aynı ölçüm İngilizcede de (İngilizce metinler daha uzun; sonuç ekranında 360 px'te taşma yakalandı).
+const DIL = {
+  tr: { adres: './#klasik', kur: 'Şirketi kur', sonraki: /^(Sonraki hafta|Sonuçları gör)$/, son: 'Sonuçları gör' },
+  en: { adres: './?lang=en#klasik', kur: 'Found the company', sonraki: /^(Next week|See the results)$/, son: 'See the results' },
+} as const;
+
+async function herGorunumde(page: Page, olc: (gorunum: string) => Promise<void>, dil: keyof typeof DIL = 'tr') {
+  const d = DIL[dil];
   // Önce boş sayfa: yalnız '#' farkı olan adrese gitmek sayfayı yeniden yüklemez (v1.2'de yakalandı).
   await page.goto('about:blank');
-  await page.goto('./#klasik');
+  await page.goto(d.adres);
   await olc('başlangıç');
-  await page.getByRole('button', { name: 'Şirketi kur' }).click();
+  await page.getByTestId('rehber-ac').click();
+  await olc('rehber');
+  await page.getByTestId('rehber-kapat').click();
+  await page.getByRole('button', { name: d.kur }).click();
   await olc('karar');
   for (const [i, id] of EARLY_BUST.entries()) {
     await page.locator(`.option[data-option="${id}"]`).click();
     if (i === 0) await olc('karar sonucu');
-    const next = page.getByRole('button', { name: /^(Sonraki hafta|Sonuçları gör)$/ });
+    const next = page.getByRole('button', { name: d.sonraki });
     const label = await next.textContent();
     await next.click();
-    if (label === 'Sonuçları gör') break;
+    if (label === d.son) break;
   }
   await expect(page.getByTestId('bitis-baslik')).toBeVisible();
   await olc('oyun sonu');
 }
+
+for (const e of EKRANLAR) {
+  test(`taşma yok, İngilizce — ${e.ad}`, async ({ page }) => {
+    await page.setViewportSize({ width: e.width, height: e.height });
+    const bulgular: string[] = [];
+    await herGorunumde(page, async (g) => {
+      for (const t of await tasmalar(page)) bulgular.push(`${g}: ${t}`);
+    }, 'en');
+    expect(bulgular).toEqual([]);
+  });
+}
+
+test('axe-core, İngilizce: beş görünümde WCAG A/AA ihlali yok', async ({ page }) => {
+  const bulgular: string[] = [];
+  await herGorunumde(page, async (g) => {
+    for (const v of await axeIhlalleri(page)) bulgular.push(`${g}: ${v}`);
+  }, 'en');
+  expect(bulgular).toEqual([]);
+});
 
 for (const e of EKRANLAR) {
   test(`taşma yok — ${e.ad}`, async ({ page }) => {
@@ -145,6 +174,15 @@ test('sayfa yakınlaştırma %200 (1280×720 → 640×360): taşma yok, oyun oyn
   await herGorunumde(page, async (g) => {
     for (const t of await tasmalar(page)) bulgular.push(`${g}: ${t}`);
   });
+  expect(bulgular).toEqual([]);
+});
+
+test('sayfa yakınlaştırma %200, İngilizce (640×360): taşma yok, oyun oynanıyor', async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 360 });
+  const bulgular: string[] = [];
+  await herGorunumde(page, async (g) => {
+    for (const t of await tasmalar(page)) bulgular.push(`${g}: ${t}`);
+  }, 'en');
   expect(bulgular).toEqual([]);
 });
 
